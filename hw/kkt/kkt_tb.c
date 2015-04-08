@@ -2,21 +2,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "kkt_inc.h"
+#include <string.h>
 
-void sw_kkt(KKT_IN in[ELEMENTS], KKT_OUT out[ELEMENTS]) {
-	int i;
-	for (i = 0; i < ELEMENTS; i++) {
-		float u = in->y + in->e;
-		if (in->alpha == 0) {
-			out[i] = (in->y * u) >= (1 - ERROR);
-		}
-		else if (in->alpha == C) {
-			out[i] = (in->y * u) <= (1 + ERROR) ||
-				     (in->y * u) >= (1 - ERROR);
-		}
-		else {
-			out[i] = (in->y * u) <= (1 + ERROR);
-		}
+//#define LOG
+
+static bool isKKT(float alpha, char y, float e) {
+	float u = y + e;
+	float yuProduct = y * u;
+
+	if (0 == alpha) {
+		return yuProduct >= (1 - ERROR);
+	}
+	else if (C == alpha) {
+		return yuProduct <= (1 + ERROR);
+	}
+	else {
+		return yuProduct <= (1 + ERROR) && yuProduct >= (1 - ERROR);
 	}
 }
 
@@ -25,24 +26,39 @@ float randFloat(void) {
 }
 
 int main(void) {
-	int i;
+	unsigned short i;
+	unsigned short j = 0;
+	unsigned short dummy;
 	KKT_IN in [ELEMENTS];
 	KKT_OUT out_sw[ELEMENTS];
 	KKT_OUT out_hw[ELEMENTS];
 
+	// initialize everything to 0
+	memset(out_sw, 0, sizeof(KKT_OUT) * ELEMENTS);
+	memset(out_hw, 0, sizeof(KKT_OUT) * ELEMENTS);
+
+	// generate random data
 	for (i = 0; i < ELEMENTS; i++) {
 		in[i].alpha = randFloat() * C;
 		in[i].y = randFloat() > 0.5 ? 1 : -1;
 		in[i].e = randFloat() * C;
-		//printf("i: %d\ta: %f\ty: %d\te: %f\n",
-		//	   i, in[i].alpha, in[i].y, in[i].e);
+#ifdef LOG
+		printf("i: %d\ta: %f\ty: %d\te: %f\n",
+			   i, in[i].alpha, in[i].y, in[i].e);
+#endif
+
+		if (!isKKT(in[i].alpha, in[i].y, in[i].e)) {
+			out_sw[j] = i;
+			j++;
+		}
 	}
 
-	sw_kkt(in, out_sw);
-	kkt(in, out_hw);
+	kkt(in, out_hw, &dummy);
 
 	for (i = 0; i < ELEMENTS; i++) {
-		//printf("i: %d\tout_sw: %d\tout_hw: %d\n", i, out_sw[i], out_hw[i]);
+#ifdef LOG
+		printf("i: %d\tout_sw: %d\tout_hw: %d\n", i, out_sw[i], out_hw[i]);
+#endif
 		if (out_sw[i] != out_hw[i]) {
 			printf("TEST FAILED\n");
 			return -1;

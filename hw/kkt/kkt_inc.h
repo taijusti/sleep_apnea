@@ -1,9 +1,10 @@
 #ifndef KKT_H
 #define KKT_H
+#include "../common/common.h"
+#include <stdbool.h>
 
 #define C (5)
 #define ERROR (0.1)
-#define ELEMENTS (1000)
 
 // TODO: figure out how to do fixed point
 typedef struct {
@@ -12,7 +13,8 @@ typedef struct {
 	float e;
 } KKT_IN;
 
-// TODO: figure out how to make this use only 1 bit
-typedef unsigned char KKT_OUT;
+typedef unsigned short KKT_OUT;
+
+void kkt(KKT_IN in[ELEMENTS], KKT_OUT out[ELEMENTS], unsigned short * validSize);
 
 #endif

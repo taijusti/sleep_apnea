@@ -7,14 +7,8 @@
 #define ERROR (0.1)
 
 // TODO: figure out how to do fixed point
-typedef struct {
-	float alpha;
-	char y;
-	float e;
-} KKT_IN;
-
-typedef unsigned short KKT_OUT;
-
-void kkt(KKT_IN in[ELEMENTS], KKT_OUT out[ELEMENTS], unsigned short * validSize);
+// TODO: figure out address location of y
+void kkt(alpha_t alpha[ELEMENTS], y_t y [ELEMENTS], e_t e[ELEMENTS],
+		kkt_t kkt_violators[ELEMENTS], unsigned short * validSize);
 
 #endif

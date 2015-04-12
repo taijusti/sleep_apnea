@@ -5,6 +5,7 @@
 
 static bool isKKT(float alpha, char y, float e) {
 #pragma HLS INLINE
+
 	float u = y + e;
 	float yuProduct = y * u;
 
@@ -19,10 +20,13 @@ static bool isKKT(float alpha, char y, float e) {
 	}
 }
 
-void kkt(KKT_IN in[ELEMENTS], KKT_OUT out[ELEMENTS], unsigned short * validSize) {
-#pragma HLS DATA_PACK variable=in
-//#pragma HLS STREAM variable=in
-#pragma HLS INTERFACE ap_ctrl_hs port=return
+void kkt(float alpha[ELEMENTS], float y [ELEMENTS], float e[ELEMENTS],
+		unsigned short kkt_violators[ELEMENTS], unsigned short * validSize) {
+// TODO: interface pragma wrong
+#pragma HLS INTERFACE bram port=kkt
+#pragma HLS INTERFACE ap_fifo port=e
+#pragma HLS INTERFACE ap_memory port=y
+#pragma HLS INTERFACE bram port=alpha
 
 	unsigned short i;
 	unsigned short j = 0;
@@ -31,8 +35,8 @@ void kkt(KKT_IN in[ELEMENTS], KKT_OUT out[ELEMENTS], unsigned short * validSize)
 	for (i = 0; i < ELEMENTS; i++) {
 	#pragma HLS PIPELINE
 
-		if (!isKKT(in[i].alpha, in[i].y, in[i].e)) {
-			out[j] = i;
+		if (!isKKT(alpha[i], y[i], e[i])) {
+			kkt_violators[j] = i;
 			j++;
 		}
 	}

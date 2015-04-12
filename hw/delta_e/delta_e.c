@@ -4,7 +4,9 @@
 #include "../common/common.h"
 
 void delta_e(float e, float e_bram[ELEMENTS], float * max_delta_e) {
-#pragma HLS INTERFACE ap_ctrl_none port=return
+#pragma HLS INTERFACE bram port=e_bram
+#pragma HLS INTERFACE ap_ctrl_hs port=return
+
 	unsigned short i;
 	unsigned short max_delta_e_idx = 0;
 	float local_max_delta_e = 0;

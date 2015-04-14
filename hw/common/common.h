@@ -3,27 +3,24 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#include <stdbool.h>
-
 #define ABS(a) ((a) < 0 ? -(a) : (a))
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
-#define ELEMENTS (10)
+#define ELEMENTS (1000)
 #define DIMENSIONS (4)
 
 
 /*
  * Types:
  * e = float
- * y = short
+ * y = bool
  * alpha = float
  * b = float
  * k = float
- * kkt = bool
+ * kkt = short
  */
 
 typedef struct {
 	float dim [DIMENSIONS];
-	bool y;
 } data_t;
 
 #endif

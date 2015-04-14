@@ -5,6 +5,6 @@
 
 #include "../common/common.h"
 
-void delta_e(float e, float e_bram[ELEMENTS], float * max_delta_e);
+void delta_e(float target_e, float e_bram[ELEMENTS], float * max_delta_e);
 
 #endif

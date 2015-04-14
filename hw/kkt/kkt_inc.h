@@ -8,7 +8,7 @@
 
 // TODO: figure out how to do fixed point
 // TODO: figure out address location of y
-void kkt(alpha_t alpha[ELEMENTS], y_t y [ELEMENTS], e_t e[ELEMENTS],
-		kkt_t kkt_violators[ELEMENTS], unsigned short * validSize);
+void kkt(float alpha[ELEMENTS], bool y [ELEMENTS], float e_fifo[ELEMENTS],
+		unsigned short kkt_bram[ELEMENTS], unsigned short * kkt_violators);
 
 #endif

@@ -3,9 +3,8 @@
 #include "delta_e_inc.h"
 #include "../common/common.h"
 
-void delta_e(float e, float e_bram[ELEMENTS], float * max_delta_e) {
-#pragma HLS INTERFACE bram port=e_bram
-#pragma HLS INTERFACE ap_ctrl_hs port=return
+void delta_e(float target_e, float e_bram[ELEMENTS], float * max_delta_e) {
+#pragma HLS INLINE off // for debug
 
 	unsigned short i;
 	unsigned short max_delta_e_idx = 0;
@@ -14,9 +13,9 @@ void delta_e(float e, float e_bram[ELEMENTS], float * max_delta_e) {
 
 	for (i = 0; i < ELEMENTS; i++) {
 	#pragma HLS PIPELINE
-	#pragma HLS UNROLL factor=16
+	//#pragma HLS UNROLL factor=16
 
-		delta_e = ABS(e - e_bram[i]);
+		delta_e = ABS(target_e - e_bram[i]);
 		if (delta_e > local_max_delta_e) {
 			local_max_delta_e = delta_e;
 			max_delta_e_idx = i;

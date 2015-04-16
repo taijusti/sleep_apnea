@@ -5,7 +5,7 @@
 
 #define ABS(a) ((a) < 0 ? -(a) : (a))
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
-#define ELEMENTS (1000)
+#define ELEMENTS (5)
 #define DIMENSIONS (4)
 
 
@@ -22,5 +22,7 @@
 typedef struct {
 	float dim [DIMENSIONS];
 } data_t;
+
+float dotProduct(data_t * point1, data_t * point2);
 
 #endif

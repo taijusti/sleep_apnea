@@ -3,12 +3,13 @@
 #include <stdlib.h>
 #include "kkt_inc.h"
 #include <string.h>
+#include <stdbool.h>
 
 //#define LOG
 
-static bool isKKT(float alpha, char y, float e) {
-	float u = y + e;
-	float yuProduct = y * u;
+static bool isKKT(float alpha, bool y, float e) {
+	float u = (y ? 1 : -1) + e;
+	float yuProduct =  y ? u : -u;
 
 	if (0 == alpha) {
 		return yuProduct >= (1 - ERROR);
@@ -25,6 +26,7 @@ float randFloat(void) {
 	return (float)rand() / RAND_MAX;
 }
 
+// TODO: update
 int main(void) {
 	unsigned short i;
 	unsigned short j = 0;
@@ -40,10 +42,10 @@ int main(void) {
 	// generate random data
 	for (i = 0; i < ELEMENTS; i++) {
 		in[i].alpha = randFloat() * C;
-		in[i].y = randFloat() > 0.5 ? 1 : -1;
+		in[i].y = randFloat() > 0.5;
 		in[i].e = randFloat() * C;
 #ifdef LOG
-		printf("i: %d\ta: %f\ty: %d\te: %f\n",
+		printf("i: %d\ta: %f\ty: %b\te: %f\n",
 			   i, in[i].alpha, in[i].y, in[i].e);
 #endif
 

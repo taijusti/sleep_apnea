@@ -93,7 +93,7 @@ int main(void) {
 
 	j = 0;
 	for (i = 0; i < ELEMENTS; i++) {
-		if (!sw_kkt(alpha[i], y[i], e_bram[i])) {
+		if (!sw_kkt(alpha[i], y[i], expected_e_bram[i])) {
 			expected_kkt_bram[j] = i;
 			j++;
 		}
@@ -114,7 +114,8 @@ int main(void) {
 	}
 
 	if (expected_kkt_violators != kkt_violators) {
-		printf("TEST FAILED! # of KKT violators mismatch!\n");
+		printf("TEST FAILED! # of KKT violators mismatch! expected: %d\tactual: %d\n",
+			   expected_kkt_violators, kkt_violators);
 		return 1;
 	}
 

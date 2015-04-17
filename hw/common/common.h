@@ -5,7 +5,7 @@
 
 #define ABS(a) ((a) < 0 ? -(a) : (a))
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
-#define ELEMENTS (5)
+#define ELEMENTS (1024)
 #define DIMENSIONS (4)
 
 

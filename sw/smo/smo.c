@@ -2,9 +2,10 @@
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
+#include <math.h>
 
 #define ITERATIONS (10000)
-#define C (1000000000000) // hyperparameter for Lagrange multiplier. all alpha must obey 0 <= alpha <= C
+#define C (100) // hyperparameter for Lagrange multiplier. all alpha must obey 0 <= alpha <= C
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
 #define ABS(a) ((a) < 0 ? -(a) : (a))
@@ -12,10 +13,10 @@
 #define false (0)
 #define bool int
 #define TEST_DIM (2)
-#define TEST_DATA_SIZE (5)
+#define TEST_DATA_SIZE (100)
 
 typedef struct {
-	double * dim;
+	float * dim;
 	int y; // outcome
 } DATA;
 
@@ -45,6 +46,22 @@ double dotProduct(DATA * a, DATA * b){
 	return sum;
 }
 
+double gaussian(DATA * a, DATA * b)
+{
+	int i = 0;
+	double diff = 0;
+	double sum = 0;
+
+	for (; i < numDim; i++) {
+		diff = a->dim[i] - b->dim[i];
+		//printf("qedewde data 1 %i   data 2  %i\n", a->dim[i], b->dim[i
+		sum = sum + diff*diff;
+	}
+
+	return exp(-sum);
+
+}
+
 double classify(DATA * x, CLASSIFIER * classifier, int numDim) {
 	int i;
 	double sum = 0;
@@ -58,7 +75,8 @@ double classify(DATA * x, CLASSIFIER * classifier, int numDim) {
 }
 
 double kernel(DATA * a, DATA * b) {
-	return dotProduct(a,b);
+//	return dotProduct(a,b);
+	return gaussian(a, b);
 }
 double classify_2( int classified_point)
 {
@@ -113,73 +131,7 @@ bool checkKKT(double alphas, double yuProduct) {
 
 
 int smo(int d2Idx,int d1Idx,double err2,double err1) {
-/*	double * alpha = (double*)malloc(sizeof(double) * numData); // Langrange multipliers
-	memset(alpha, 0, sizeof(double) * numData);
-	double * err = (double*)malloc(sizeof(double) * numData); // error cache, TODO: cache the non-bound errors only
-	memset(err, 0, sizeof(double) * numData);
-
-	// TODO zero out classifier 
-	int n, start;
-	int i, j;
-	double yuProduct;
-	double bNew, bOld = 0;
-	double b1, b2, k11, k12, k22;
-	bool done = true;
-	int d1Idx;
-	int d2Idx;
-	double maxErr;
-	double alpha1New;
-	double alpha2New;
-	double alpha2NewClipped;
-	int s;
-	double low;
-	double high;
-	bool flag = 1;
-	start = -1;
-	for (i = 0; i<numData; i++)
-	{
-		err[i] = -data[i].y; // initialiye error cache with error values, since all initial alphas and threshold are zero then all classifications are zero. (I think)
-	}
-
-	*/
-
-
-//	while (1) {
-		// Heuristic to choose first datum to work on. Find the first point
-		// that violates KK
-//		start = (start + 1); // variable to choose different kkt violator each iteration
-		//printf ("start %i \n", start);	
-//		if (start == 100000)
-//			break;
-//		for (i = start; i < numData + start; i++) {
-//			yuProduct = data[i%numData].y * classify_2(data, alpha, bOld, numData, numDim, i%numData);
-
-//			if (checkKKT(alpha[i%numData], yuProduct) == false) {
-//				d2Idx = i%numData;
-//				flag = 0;
-//				break;
-//			}
-//
-//		}
 	
-//		if (flag) {
-//			break;
-//		}
-
-		// Heuristic to choose second element. Just choose any element that maximizes error
-		//d2Idx = 0;
-//		maxErr = -1;
-//		d1Idx = -1;
-//		for (i = 0; i < numData; i++) {
-//			if (((ABS(err[d2Idx] - err[i]) > maxErr))&&(i!=d2Idx)) {
-//				maxErr = ABS(err[d2Idx] - err[i]);
-//				d1Idx = i;
-//			}
-//		}
-
-		// STEP 1: compute N
-		//	printf ("i %i j %i \n", d1Idx,d2Idx);
-		//	printf ("error %f \n", maxErr);		
 	if (d1Idx == d2Idx)
 		return 0;
 	double k11, k22, k12,n;
@@ -188,12 +140,6 @@ int smo(int d2Idx,int d1Idx,double err2,double err1) {
 	k12 = kernel(&(data[d1Idx]), &(data[d2Idx]));
 	n = k11 + k22 - (2 * k12);
 
-
-		// STEP 2: compute error
-		//err[d1Idx] = classify(&(data[d1Idx]), classifier, numDim) - data[d1Idx].y;
-		//err[d2Idx] = classify(&(data[d2Idx]), classifier, numDim) - data[d2Idx].y;
-		//err[d1Idx] = classify_2(data, alpha, bOld, numData, numDim, d1Idx) - data[d1Idx].y; //get them free from cache. TODO: if nonboundthen compute it
-		//err[d2Idx] = classify_2(data, alpha, bOld, numData, numDim, d2Idx) - data[d2Idx].y; //we get them from the cache
 	double low, high;
 	double alpha2New;
 	int s = data[d1Idx].y * data[d2Idx].y;
@@ -216,13 +162,9 @@ int smo(int d2Idx,int d1Idx,double err2,double err1) {
 
 		// STEP 3: compute unclipped alpha2New
 	double f1, f2, l1, h1, psiL, psiH,alpha2NewClipped;
-//	assert (n!=0);//TODO: check what to do if n is zero.
 	if (n > 0)
 	{
-		alpha2New = alpha[d2Idx] + (((data[d2Idx].y * (err[d1Idx] - err[d2Idx])) / (n*1.0)));//TODO: check what to do if n is zero.
-		// STEP 5: clip alpha2
-		//alpha2NewClipped = MIN(alpha2New, high);
-		//alpha2NewClipped = MAX(alpha2NewClipped, low);
+		alpha2New = alpha[d2Idx] + (((data[d2Idx].y * (err1 - err2)) / (n*1.0)));//TODO: check what to do if n is zero.
 		alpha2NewClipped = alpha2New;
 		if (alpha2New < low)
 			alpha2NewClipped = low;
@@ -256,7 +198,7 @@ int smo(int d2Idx,int d1Idx,double err2,double err1) {
 		else
 			alpha2NewClipped = alpha[d2Idx];
 	}
-	if (ABS(alpha2NewClipped - alpha[d2Idx]) < 0.001*(alpha2NewClipped + alpha[d2Idx] + 0.001)) // I dont really understand this condition. Ibrahim
+	if (ABS(alpha2NewClipped - alpha[d2Idx]) < 0.001*(alpha2NewClipped + alpha[d2Idx] + 0.001)) // I dont really understand this condition, I think it is to check if alpha changed significantly or not. Ibrahim
 		return 0;
 			
 
@@ -281,10 +223,10 @@ int smo(int d2Idx,int d1Idx,double err2,double err1) {
 		// updating the error cache
 
 //		for (i = 0; i<numData; i++) // TODO: update only non-bound alphas and if d1Idx or d2Idx are in bound then their correponding error would be zero
-	//		{
+//		{
 
-		//		err[i] = err[i] + data[d1Idx].y * (alpha1New - alpha[d1Idx])*kernel(&(data[d1Idx]), &(data[i]), numDim) + data[d2Idx].y * (alpha2NewClipped - alpha[d2Idx]) * kernel(&(data[d2Idx]), &(data[i]), numDim) + bOld - bNew;
-			//}
+//			err[i] = err[i] + data[d1Idx].y * (alpha1New - alpha[d1Idx])*kernel(&(data[d1Idx]), &(data[i]), numDim) + data[d2Idx].y * (alpha2NewClipped - alpha[d2Idx]) * kernel(&(data[d2Idx]), &(data[i]), numDim) + bOld - bNew;
+//}
 				//printf("bold %f, bnew %f ",bOld,bNew);
 		b = bNew;
 		alpha[d1Idx] = alpha1New;
@@ -293,15 +235,6 @@ int smo(int d2Idx,int d1Idx,double err2,double err1) {
 				printf("alpha: %i, %f alpha: %i, %f. \n", d1Idx, alpha1New, d2Idx, alpha2NewClipped);
 
 	
-	/////////////////////////////// computing w only for linear to use the test in the main temporary!!!!!!!
-//	for (i = 0; i<numData; i++)
-//	{
-//		for (j = 0; j<numDim; j++)
-//			classifier->dim[j] += alpha[i] * data[i].dim[j];
-//	}
-	//for (j = 0; j<numDim; j++)
-	//printf("w %f, b %f \n", classifier->dim[j], bOld);
-	// cleanup
 		return 1;
 }
 
@@ -349,7 +282,7 @@ int smoChooseSecond(int d2Idx)
 
 	}
 
-	return 1;
+	return 0;
 
 }
 
@@ -433,70 +366,36 @@ int main(void) {
 	theoreticalClassifier.dim = (double*)malloc(sizeof(double) * TEST_DIM);
 	numDim = TEST_DIM;
 	numData = TEST_DATA_SIZE;
-	for (i = 0; i < TEST_DIM; i++) {
+	
 
-		theoreticalClassifier.dim[i] = (rand()) % 11 - 6;
-	//	printf(" %06.3f\n", theoreticalClassifier.dim[i]);
-	}
-	theoreticalClassifier.b = (rand() % 10) - 5;
-
-	// generate test data based on chosen classifier
-	//data[TEST_DATA_SIZE];
-
-	for (i = 0; i < TEST_DATA_SIZE; i++) {
+	for (i = 0; i < TEST_DATA_SIZE; i++) 
+	{
 		data[i].dim = (double*)malloc(sizeof(double) * TEST_DIM);
-		for (j = 0; j < TEST_DIM; j++) {
-			data[i].dim[j] = ((rand()) % 1000 - 500)/50.0;
-			printf(" %f ", data[i].dim[j]);
-		}
-		
-
-		if (classify(&(data[i]), &theoreticalClassifier, TEST_DIM) > 0)
-			data[i].y = 1;
-		else
-			data[i].y = -1;
-
-		printf("   %i ", data[i].y);
-
-
-		printf("\n");
-
 	}
 
 
-	/*
-	data[0].dim[0]=  1;
-	data[1].dim[0] = 1;
-	data[2].dim[0] = 1;
-	data[3].dim[0] = 1;
-	data[4].dim[0] = 1;
-	data[5].dim[0] = 3;
-	data[6].dim[0] = 3;
-	data[7].dim[0] = 3;
-	data[8].dim[0] = 3;
-	data[9].dim[0] = 3;
 
-	data[0].dim[1] = 0;
-	data[1].dim[1] = 1;
-	data[2].dim[1] = 2;
-	data[3].dim[1] = -1;
-	data[4].dim[1] = -2;
-	data[5].dim[1] = 0;
-	data[6].dim[1] = 1;
-	data[7].dim[1] = 2;
-	data[8].dim[1] = -1;
-	data[9].dim[1] = -2;
+	FILE * fp;
 
-	data[0].y = 1;
-	data[1].y = 1;
-	data[2].y = 1;
-	data[3].y = 1;
-	data[4].y = 1;
-	data[5].y = -1;
-	data[6].y = -1;
-	data[7].y = -1;
-	data[8].y = -1;
-	data[9].y = -1;*/
+	fp = fopen("testInput.txt", "r+");
+
+	i = 0;
+	while (fscanf(fp,"%f    %f", &(data[i].dim[0]), &(data[i].dim[1])) == 2) 
+	{
+		i++;
+	}
+
+	for (i = 0; i < TEST_DATA_SIZE; i++)
+	{
+	//	printf("x:%f y:%f \n", data[i].dim[0], data[i].dim[1]);
+		if (i < 50)
+			data[i].y = -1;
+		else
+			data[i].y = 1;
+	}
+
+
+	
 
 
 
@@ -504,15 +403,12 @@ int main(void) {
 	CLASSIFIER experimentalClassifier;
 	experimentalClassifier.dim = (double*)malloc(sizeof(double) * TEST_DIM);
 	smotrain(&experimentalClassifier);
-	//printf(" %06.3f\n",  (5.0/9.0)*(3535-32));
-	// try classifying with the experimentalClassifier
-	//DATA testData;
 	double expectedResult;
 	double actualResult;
 	int mispredicts = 0;
 	DATA testData[5];
 	for (i = 0; i < 5; i++) {
-		testData[i].dim = (double*)malloc(sizeof(double) * TEST_DIM);
+		testData[i].dim = (float*)malloc(sizeof(float) * TEST_DIM);
 		for (j = 0; j < TEST_DIM; j++) {
 			testData[i].dim[j] = (rand())%200 - 100;
 		}
@@ -527,8 +423,9 @@ int main(void) {
 		printf("expectedresult %f, actualresult %f \n", expectedResult, actualResult);
 	}
 
+	
 	for (i = 0; i < TEST_DATA_SIZE; i++)
-		printf("mispredicts %i: %f  alpha %f, output:%i, theoritical:%f\n", i, classify_2(i), alpha[i], data[i].y, classify(&(data[i]), &theoreticalClassifier, TEST_DIM));
-	printf("mispredictions %i", mispredicts);
+		printf("alpha[%i]: %f\n", i, alpha[i]);
+//	printf("mispredictions %i", mispredicts);
 	return 0;
 }

@@ -1,21 +1,32 @@
-// ECE1373 Digital Systems Design for SoC
+#include "k_engine.h"
 
-#include "../k/k_inc.h"
-#include "../common/common.h"
+void two_norm(int x[dim],int y[dim], int* z)
+{
+	int inter=0;
+	int difference;
+	int i;
+	dimesnion:
+	for (i=0;i<dim;i++)
+	{
+		difference = x[i]-y[i];
+		inter = inter + difference*difference;
 
-// TODO: dummy kernel function. implements linear kernel for now. remove
-// when gaussian radial is implemented
-// TODO: optimize with pragma
-void k(data_t * point1, data_t * point2, data_t data[ELEMENTS], float k1 [ELEMENTS], float k2 [ELEMENTS]) {
-//#pragma HLS INLINE off // TODO: for debug
-#pragma HLS DATAFLOW
-
-	unsigned short i;
-
-	for (i = 0; i < ELEMENTS; i++) {
-	#pragma HLS UNROLL factor=8
-	#pragma HLS PIPELINE
-		k1[i] = dotProduct(point1, data + i);
-		k2[i] = dotProduct(point2, data + i);
 	}
+
+	*z=inter;
+}
+
+void exponential(float i , float* o  )
+{
+	float inter = i*-1*inverse_sigma_squared;
+	*o=expf(inter);
+
+}
+void k_engine(int x[dim],int y[dim],float* out)
+{
+	int interm,yy;
+	//interm=two_norm(x,y,&yy);
+	two_norm(x,y,&interm);
+	exponential((float)interm,out);
+
 }

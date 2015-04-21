@@ -1,8 +1,13 @@
-#ifndef K_H
-#define K_H
+#define dim 10
+#define inverse_sigma_squared 1/64
 
-#include "../common/common.h"
+//#include <stdio.h>
+//#include <windows.h>
+#include <math.h>
 
-void k(data_t * point1, data_t * point2, data_t data[ELEMENTS], float k1[ELEMENTS], float k2[ELEMENTS]);
-
-#endif
+//#include <tgmath.h>
+//#include <stdlib.h>
+//#include "ap_cint.h"
+void two_norm(int x[dim], int y[dim], int* z);
+void exponential(float i , float* o  );
+void k_engine(int x[dim],int y[dim],float* out);

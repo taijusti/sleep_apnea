@@ -22,7 +22,7 @@ static bool isKKT(float alpha, bool y, float e) {
 
 void kkt(float alpha[ELEMENTS], bool y [ELEMENTS], float e_fifo[ELEMENTS],
 		unsigned short kkt_bram[ELEMENTS], unsigned short * kkt_violators) {
-//#pragma HLS INLINE off // for debug
+#pragma HLS INLINE
 #pragma HLS DATAFLOW
 
 	unsigned short i;
@@ -39,5 +39,5 @@ void kkt(float alpha[ELEMENTS], bool y [ELEMENTS], float e_fifo[ELEMENTS],
 		}
 	}
 
-	*kkt_violators = j;
+	*kkt_violators += j;
 }

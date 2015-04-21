@@ -21,9 +21,10 @@ void device(data_t data [ELEMENTS], // TODO: remove
 		    float e_bram[ELEMENTS],
 		    float * max_delta_e,
 		    unsigned short kkt_bram [ELEMENTS], unsigned short * kkt_violators) {
-#pragma HLS ARRAY_PARTITION variable=data block factor=8 dim=1
-#pragma HLS ARRAY_PARTITION variable=kkt_bram block factor=8 dim=1
-#pragma HLS ARRAY_PARTITION variable=alpha block factor=8 dim=1
+#pragma HLS ARRAY_PARTITION variable=e_bram cyclic factor=8 dim=1
+#pragma HLS ARRAY_PARTITION variable=data cyclic factor=8 dim=1
+#pragma HLS ARRAY_PARTITION variable=kkt_bram cyclic factor=8 dim=1
+#pragma HLS ARRAY_PARTITION variable=alpha cyclic factor=8 dim=1
 #pragma HLS ARRAY_PARTITION variable=point2->dim complete dim=1
 #pragma HLS ARRAY_PARTITION variable=point1->dim complete dim=1
 #pragma HLS INTERFACE s_axilite port=point2 bundle=device_io
@@ -40,19 +41,15 @@ void device(data_t data [ELEMENTS], // TODO: remove
 #pragma HLS INTERFACE s_axilite port=kkt_bram bundle=device_io
 #pragma HLS INTERFACE s_axilite port=kkt_violators bundle=device_io
 
-
+	*kkt_violators = 0;
 	float k1_fifo[ELEMENTS];
-	#pragma HLS ARRAY_PARTITION variable=k1_fifo block factor=8 dim=1
+	#pragma HLS ARRAY_PARTITION variable=k1_fifo block factor=16 dim=1
 	float k2_fifo[ELEMENTS];
-	#pragma HLS ARRAY_PARTITION variable=k2_fifo block factor=8 dim=1
+	#pragma HLS ARRAY_PARTITION variable=k2_fifo block factor=16 dim=1
 	float e_fifo[ELEMENTS];
-	#pragma HLS ARRAY_PARTITION variable=e_fifo block factor=8 dim=1
+	#pragma HLS ARRAY_PARTITION variable=e_fifo block factor=16 dim=1
 
 	k(point1, point2, data, k1_fifo, k2_fifo);
 	e(e_bram, e_fifo, k1_fifo, k2_fifo, y1_delta_alpha1_product, y2_delta_alpha2_product, delta_b);
 	kkt(alpha, y, e_fifo, kkt_bram, kkt_violators);
-
-
-	// TODO: need to write logic so that this is only run when target_e is sent
-	//delta_e(float e, float e_bram[ELEMENTS], float * max_delta_e);
 }

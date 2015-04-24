@@ -1,5 +1,3 @@
-#define DIMENSIONS 4
-#define ELEMENTS 5
 #define inverse_sigma_squared 1/64
 
 

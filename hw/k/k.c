@@ -1,4 +1,4 @@
-#include "k_engine.h"
+#include "../k/k_inc.h"
 
 void two_norm(data_t* x,data_t* i,data_t* j, int* o_i,int* o_j)
 {

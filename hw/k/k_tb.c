@@ -53,7 +53,7 @@ int main()
 
 
 		// call the module being tested
-		k_engine(&point1, &point2, data, k1, k2);
+		k(&point1, &point2, data, k1, k2);
 
 		// test to make sure every k value lines up with the kernel function
 		for (i = 0; i < ELEMENTS; i++) {

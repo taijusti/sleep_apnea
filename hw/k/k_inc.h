@@ -6,6 +6,7 @@
 //#include <stdio.h>
 //#include <windows.h>
 #include <math.h>
+#include "../common/common.h"
 //typedef struct {
 //	float dim [ DIMENSIONS ];
 //} data_t;

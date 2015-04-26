@@ -13,7 +13,7 @@
 //#include "ap_cint.h"
 //void two_norm(int* x,int* y, int* z);
 //void two_norm(int* x,int* i,int* j, int* o_i,int* o_j);
-void two_norm(data_t* x,data_t* i,data_t* j, int* o_i,int* o_j);
+void two_norm(data_t* x,data_t* i,data_t* j, float * o_i, float * o_j);
 //void exponential(float i , float* o  );
 //void exponential(float i , float j, float* o_i,float* o_j  );
 void exponential(float i , float j, float* o_i,float* o_j  );

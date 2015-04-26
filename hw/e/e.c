@@ -13,8 +13,8 @@ void e(float e_bram[ELEMENTS], float e_fifo[ELEMENTS], float k1[ELEMENTS],
 	unsigned short i;
 
 	for (i = 0; i < ELEMENTS; i++) {
-	#pragma HLS UNROLL factor=8
-	#pragma HLS PIPELINE
+	//#pragma HLS UNROLL factor=8
+	//#pragma HLS PIPELINE
 
 		float temp = e_bram[i]
 		     		 + (y1_delta_alpha1_product * k1[i])

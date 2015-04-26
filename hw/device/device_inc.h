@@ -9,6 +9,8 @@
 #include "../kkt/kkt_inc.h"
 #include "../e/e_inc.h"
 #include "../k/k_inc.h"
+#include "../communication/communication_inc.h"
+
 
 void device(data_t data [ELEMENTS], // TODO: remove
 			data_t * point1,
@@ -21,5 +23,7 @@ void device(data_t data [ELEMENTS], // TODO: remove
 		    float e_bram[ELEMENTS],
 		    float * max_delta_e,
 		    unsigned short kkt_bram [ELEMENTS], unsigned short * kkt_violators);
+
+//void device(unsigned int in [BUF_SIZE], unsigned int out [BUF_SIZE]);
 
 #endif

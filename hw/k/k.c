@@ -52,19 +52,3 @@ void k (data_t* i,data_t* j,data_t data[ELEMENTS],float output_i[ELEMENTS],float
         k_engine_help(&(data[k]),i,j,&(output_i[k]),&(output_j[k]));
     }
 }
-
-/*
-void k(data_t * point1, data_t * point2, data_t data[ELEMENTS], float k1 [ELEMENTS], float k2 [ELEMENTS]) {
-#pragma HLS INLINE
-#pragma HLS DATAFLOW
-
-    unsigned short i;
-
-    for (i = 0; i < ELEMENTS; i++) {
-    #pragma HLS UNROLL factor=8
-    #pragma HLS PIPELINE
-        k1[i] = dotProduct(point1, data + i);
-        k2[i] = dotProduct(point2, data + i);
-    }
-}
-*/

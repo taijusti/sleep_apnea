@@ -13,7 +13,17 @@
 // TODO: dummy kernel function. for now just implements linear
 // kernel. replace with gaussian radial kernel when it is complete
 static float sw_k(data_t * point1, data_t * point2) {
-    return dotProduct(point1, point2);
+     int i;
+	 float difference;
+	 float result = 0;
+	 for (i=0;i<DIMENSIONS;i++)
+	 {
+		 difference = point1->dim[i]-point2->dim[i];
+		 result = result + difference * difference;
+
+	 }
+	 result = result*-1*inverse_sigma_squared;
+	 return expf(result);
 }
 
 static float randFloat(void) {

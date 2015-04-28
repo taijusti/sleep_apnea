@@ -3,11 +3,11 @@
 #include "delta_e_inc.h"
 #include "../common/common.h"
 
-void delta_e(fixed_t target_e, fixed_t e_bram[ELEMENTS], fixed_t * max_delta_e) {
+void delta_e(float target_e, float e_bram [ELEMENTS], float * max_delta_e) {
     uint32_t i;
     uint32_t max_delta_e_idx = 0;
-    fixed_t local_max_delta_e = 0;
-    fixed_t delta_e;
+    float local_max_delta_e = 0;
+    float delta_e;
 
     for (i = 0; i < ELEMENTS; i++) {
     #pragma HLS PIPELINE

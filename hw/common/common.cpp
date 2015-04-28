@@ -2,10 +2,10 @@
 
 #include "../common/common.h"
 
-fixed_t dotProduct(data_t * point1, data_t * point2) {
+float dotProduct(data_t * point1, data_t * point2) {
 #pragma HLS PIPELINE
 	uint16_t i;
-	fixed_t sum = 0;
+	float sum = 0;
 
 	for (i = 0; i < DIMENSIONS; i++) {
 	#pragma HLS UNROLL

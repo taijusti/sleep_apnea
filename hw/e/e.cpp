@@ -6,10 +6,10 @@
 #include <stdint.h>
 #include <hls_stream.h>
 
-void e(hls::stream<fixed_t> * e_bram_in, hls::stream<fixed_t> * e_bram_out,
-       hls::stream<fixed_t> * e_fifo, hls::stream<fixed_t> * k1,
-       hls::stream<fixed_t> * k2, fixed_t y1_delta_alpha1_product,
-       fixed_t y2_delta_alpha2_product, fixed_t delta_b) {
+void e(hls::stream<float> * e_bram_in, hls::stream<float> * e_bram_out,
+       hls::stream<float> * e_fifo, hls::stream<float> * k1,
+       hls::stream<float> * k2, float y1_delta_alpha1_product,
+       float y2_delta_alpha2_product, float delta_b) {
 #pragma HLS DATAFLOW
 
 	unsigned short i;
@@ -17,10 +17,13 @@ void e(hls::stream<fixed_t> * e_bram_in, hls::stream<fixed_t> * e_bram_out,
 	for (i = 0; i < PARTITION_ELEMENTS; i++) {
 	#pragma HLS PIPELINE
 
-		fixed_t temp = e_bram_in->read()
-		     		 + (y1_delta_alpha1_product * k1->read())
-		     		 + (y2_delta_alpha2_product * k2->read())
-		     		 + delta_b;
+		float k1_read = k1->read(); // TODO:strictly for debug
+		float k2_read = k2->read(); // TODO:strictly for debug
+
+		float temp = e_bram_in->read();
+	    temp += (y1_delta_alpha1_product * k1_read)
+		     	+ (y2_delta_alpha2_product * k2_read)
+		     	+ delta_b;
 		e_bram_out->write(temp);
 		e_fifo->write(temp);
 	}

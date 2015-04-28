@@ -3,15 +3,16 @@
 #define K_H
     #include "../common/common.h"
     #include <math.h>
+    #define inverse_sigma_squared 1/64
 
     #ifdef FULL_INTEG
         #include <stdint.h>
         #include <hls_stream.h>
-        void k(data_t * point1, data_t * point2, hls::stream<data_t> * data,
-                hls::stream<uint32_t> * k1, hls::stream<uint32_t> * k2);
+        void k (data_t i,data_t j, hls::stream<data_t> * data, hls::stream<fixed_t> * output_i,
+                hls::stream<fixed_t> * output_j);
 
     #else
-        #define inverse_sigma_squared 1/64
+
         //typedef struct {
         //  float dim [ DIMENSIONS ];
         //} data_t;

@@ -5,7 +5,7 @@
 
     #include <stdint.h>
 
-    //#define FULL_INTEG
+    #define FULL_INTEG
 
     #define ABS(a) ((a) < 0 ? -(a) : (a))
     #define MAX(a,b) ((a) > (b) ? (a) : (b))
@@ -27,11 +27,15 @@
     #define COMMAND_GET_DELTA_E (7)
 
     #ifdef FULL_INTEG
+        typedef uint32_t fixed_t;
+        #define FIXED_TO_FLOAT(x) ((float)x) // TODO
+        #define FLOAT_TO_FIXED(x) ((fixed_t)x) // TODO
+
         typedef struct {
-            uint32_t dim [DIMENSIONS];
+            fixed_t dim [DIMENSIONS];
         } data_t;
 
-        uint32_t dotProduct(data_t * point1, data_t * point2);
+        fixed_t dotProduct(data_t * point1, data_t * point2);
 
     #else
         typedef struct {

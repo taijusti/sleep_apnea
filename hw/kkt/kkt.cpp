@@ -9,8 +9,8 @@ static bool isKKT(float alpha, bool y, float e) {
 #pragma HLS PIPELINE
 #pragma HLS INLINE
 
-    uint32_t u = (y ? 1 : -1) + e;
-    uint32_t yuProduct =  y ? u : -u;
+    fixed_t u = (y ? 1 : -1) + e;
+    fixed_t yuProduct =  y ? u : -u;
 
     if (0 == alpha) {
         return yuProduct >= (1 - ERROR);
@@ -23,11 +23,13 @@ static bool isKKT(float alpha, bool y, float e) {
     }
 }
 
-void kkt(hls::stream<uint32_t> * alpha, hls::stream<bool> * y,
-        hls::stream<uint32_t> * e_fifo, hls::stream<uint32_t> * kkt_bram) {
+void kkt(hls::stream<fixed_t> * alpha, hls::stream<bool> * y,
+        hls::stream<fixed_t> * e_fifo, hls::stream<fixed_t> * kkt_bram,
+        fixed_t * kkt_violators) {
 #pragma HLS DATAFLOW
 
-    uint32_t i;
+    fixed_t i;
+    fixed_t violator_ctr = 0;
 
     // find and record KKT violators
     for (i = 0; i < PARTITION_ELEMENTS; i++) {
@@ -35,6 +37,9 @@ void kkt(hls::stream<uint32_t> * alpha, hls::stream<bool> * y,
 
         if (!isKKT(alpha->read(), y->read(), e_fifo->read())) {
             kkt_bram->write(i);
+            violator_ctr++;
         }
     }
+
+    *kkt_violators = violator_ctr;
 }

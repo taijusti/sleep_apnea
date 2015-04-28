@@ -7,7 +7,7 @@
     #include <stdint.h>
 
     #ifdef FULL_INTEG
-        void delta_e(uint32_t target_e, uint32_t e_bram[ELEMENTS], uint32_t * max_delta_e);
+        void delta_e(fixed_t target_e, fixed_t e_bram[ELEMENTS], fixed_t * max_delta_e);
 
     #else
         void delta_e(float target_e, float e_bram[ELEMENTS], float * max_delta_e);

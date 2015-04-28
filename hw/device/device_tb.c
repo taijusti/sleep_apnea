@@ -111,37 +111,6 @@ int main(void) {
 	expected_kkt_violators = j;
 
 	// run the module
-	/*
-	unsigned int in[BUF_SIZE];
-	unsigned int out[BUF_SIZE];
-
-	// initialize the device
-	sendWord(in, COMMAND_INIT_DATA);
-	for (i = 0; i < ELEMENTS; i++) {
-	    for (j = 0; j < DIMENSIONS; j++) {
-	        sendWord(in, data[i].dim[j]);
-	    }
-
-	    sendWord(in, y[i]);
-	}
-	device(in, out);
-
-	// compute and get KKT violators
-	sendWord(in, COMMAND_GET_KKT);
-	device(in, out);
-	kkt_violators = recvWord(out);
-	for (i = 0; i < kkt_violators; i++) {
-	    kkt_bram[i] = recvWord(out);
-	}
-
-    // get E
-	sendWord(in, COMMAND_GET_E);
-    device(in, out);
-	for (i = 0; i < ELEMENTS; i++) {
-	    e_bram[i] = recvWord(out);
-	}
-	*/
-
 	device(data, &point1, &point2, y, alpha, y1_delta_alpha1_product,
 			y2_delta_alpha2_product, delta_b, e_bram, &max_delta_e,
 			kkt_bram, &kkt_violators);

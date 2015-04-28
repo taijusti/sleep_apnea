@@ -7,7 +7,7 @@ static bool isKKT(float alpha, bool y, float e) {
 #pragma HLS PIPELINE
 #pragma HLS INLINE
 
-    float u = (y ? 1 : -1) + e;
+/*    float u = (y ? 1 : -1) + e;
     float yuProduct =  y ? u : -u;
 
     if (0 == alpha) {
@@ -18,7 +18,18 @@ static bool isKKT(float alpha, bool y, float e) {
     }
     else {
         return yuProduct <= (1 + ERROR) && yuProduct >= (1 - ERROR);
-    }
+    }*/
+    
+    float yeProduct = y ? e : -e;
+	if (0 == alpha) {
+		return yeProduct >= ( -ERROR);
+	}
+	else if (C == alpha) {
+		return yeProduct <= ( ERROR);
+	}
+	else {
+		return yeProduct < ( ERROR) && yeProduct > ( -ERROR);
+	}
 }
 
 void kkt(float alpha[ELEMENTS], bool y [ELEMENTS], float e_fifo[ELEMENTS],

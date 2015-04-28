@@ -36,7 +36,7 @@ static float sw_e(float e_old, float k1, float k2, float y1_delta_alpha1_product
 }
 
 static bool sw_kkt(float alpha, bool y, float e) {
-	float u = (y ? 1 : -1) + e;
+/*	float u = (y ? 1 : -1) + e;
 	float yuProduct = y ? u : -u;
 
 	if (0 == alpha) {
@@ -47,6 +47,17 @@ static bool sw_kkt(float alpha, bool y, float e) {
 	}
 	else {
 		return yuProduct <= (1 + ERROR) && yuProduct >= (1 - ERROR);
+	}*/
+	
+	float yeProduct = y ? e : -e;
+	if (0 == alpha) {
+		return yeProduct >= ( -ERROR);
+	}
+	else if (C == alpha) {
+		return yeProduct <= ( ERROR);
+	}
+	else {
+		return yeProduct < ( ERROR) && yeProduct > ( -ERROR);
 	}
 }
 

@@ -54,7 +54,7 @@ static void kkt_pipeline (data_t * point0, data_t * point1, data_t data [ELEMENT
 
     // scheduler which pulls in data from the BRAM and puts it into the FIFOS
     // TODO: need to do
-    uint32_t i;
+    unsigned int i;
     for (i = 0; i < PARTITION_ELEMENTS; i++) {
         data_fifo.write(data[i + idx]);
         y_fifo.write(y[i + idx]);
@@ -126,7 +126,7 @@ void device(hls::stream<uint32_t> * in, hls::stream<uint32_t> * out) {
         #pragma HLS UNROLL
              kkt_pipeline(&point0, &point1, data, e_bram, alpha, y, &(kkt_bram_fifo[i]),
             		 local_kkt_violators + i, y1_delta_alpha1_product,
-                     y2_delta_alpha2_product, delta_b, i);
+                     y2_delta_alpha2_product, delta_b, i * PARTITION_ELEMENTS);
         }
 
         // send off the kkt_violators
@@ -174,6 +174,7 @@ void device(hls::stream<uint32_t> * in, hls::stream<uint32_t> * out) {
 
     case COMMAND_GET_E:
         i = in->read();
+        temp0 = e_bram[i];
         out->write(FLOAT_TO_FIXED(e_bram[i]));
         break;
 

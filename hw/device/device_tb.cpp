@@ -70,6 +70,7 @@ int main(void) {
     float e_bram[ELEMENTS];
     float expected_e_bram[ELEMENTS];
     float max_delta_e;
+    float expected_max_delta_e;
     float alpha[ELEMENTS];
     float k1[ELEMENTS];
     float k2[ELEMENTS];
@@ -81,6 +82,8 @@ int main(void) {
     hls::stream<uint32_t> in;
     hls::stream<uint32_t> out;
 
+    float temp0; // TODO: strictly for debug
+
     // initialize everything
     y1_delta_alpha1_product = randFloat();
     y2_delta_alpha2_product = randFloat();
@@ -88,7 +91,8 @@ int main(void) {
     for (i = 0; i < ELEMENTS; i++) {
         y[i] = randFloat() > 0.5;
         e_bram[i] = y[i] ? -1 : 1;
-        alpha[i] = randFloat();
+        //alpha[i] = randFloat();
+        alpha[i] = 0;
         for (j = 0; j < DIMENSIONS; j++) {
             data[i].dim[j] = randFloat();
         }
@@ -172,7 +176,8 @@ int main(void) {
         in.write(COMMAND_GET_E);
         in.write(i);
         device(&in, &out);
-        e_bram[i] = FIXED_TO_FLOAT((int32_t)out.read());
+        temp0 = FIXED_TO_FLOAT((int32_t)out.read());
+        e_bram[i] = temp0;
     }
 
     // check if the answers line up

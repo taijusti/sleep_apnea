@@ -5,7 +5,7 @@
 
     #include <stdint.h>
 
-    //#define FULL_INTEG
+    #define FULL_INTEG
 
     #define ABS(a) ((a) < 0 ? -(a) : (a))
     #define MAX(a,b) ((a) > (b) ? (a) : (b))

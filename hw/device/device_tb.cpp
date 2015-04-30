@@ -15,6 +15,10 @@
 
 #define TEST_ERROR (0.01)
 
+static float randFloat(void) {
+    return (float)rand() / RAND_MAX;
+}
+
 static float sw_k(data_t * point1, data_t * point2) {
      int i;
      float difference;
@@ -29,14 +33,6 @@ static float sw_k(data_t * point1, data_t * point2) {
      result *= -1;
      result *= inverse_sigma_squared;
      return expf(result);
-}
-
-static float randFloat(void) {
-    return (float)rand() / RAND_MAX;
-}
-
-static uint32_t randFixed(void) {
-    return rand() & 0xffff;
 }
 
 static float sw_e(float e_old, float k1, float k2, float y1_delta_alpha1_product,
@@ -71,6 +67,9 @@ int main(void) {
     float expected_e_bram[ELEMENTS];
     float max_delta_e;
     float expected_max_delta_e;
+    uint32_t max_delta_e_idx;
+    uint32_t expected_max_delta_e_idx;
+    float target_e;
     float alpha[ELEMENTS];
     float k1[ELEMENTS];
     float k2[ELEMENTS];
@@ -82,8 +81,6 @@ int main(void) {
     hls::stream<uint32_t> in;
     hls::stream<uint32_t> out;
 
-    float temp0; // TODO: strictly for debug
-
     // initialize everything
     y1_delta_alpha1_product = randFloat();
     y2_delta_alpha2_product = randFloat();
@@ -91,7 +88,6 @@ int main(void) {
     for (i = 0; i < ELEMENTS; i++) {
         y[i] = randFloat() > 0.5;
         e_bram[i] = y[i] ? -1 : 1;
-        //alpha[i] = randFloat();
         alpha[i] = 0;
         for (j = 0; j < DIMENSIONS; j++) {
             data[i].dim[j] = randFloat();
@@ -102,6 +98,8 @@ int main(void) {
         point1.dim[i] = randFloat();
         point2.dim[i] = randFloat();
     }
+
+    target_e = randFloat();
 
     // calculate correct answers
     for (i = 0; i < ELEMENTS; i++) {
@@ -124,6 +122,16 @@ int main(void) {
         }
     }
     expected_kkt_violators = j;
+
+    expected_max_delta_e = 0;
+    max_delta_e_idx = 0;
+    for (i = 0; i < ELEMENTS; i++) {
+        float delta_e = ABS(expected_e_bram[i] - target_e);
+        if (delta_e > expected_max_delta_e) {
+            expected_max_delta_e = delta_e;
+            max_delta_e_idx = i;
+        }
+    }
 
     // run the module, starting with initializing the device
     in.write(COMMAND_INIT_DATA);
@@ -176,11 +184,27 @@ int main(void) {
         in.write(COMMAND_GET_E);
         in.write(i);
         device(&in, &out);
-        temp0 = FIXED_TO_FLOAT((int32_t)out.read());
-        e_bram[i] = temp0;
+        e_bram[i] = FIXED_TO_FLOAT((int32_t)out.read());
     }
 
+    // set target E
+    in.write(COMMAND_SET_E);
+    in.write(FLOAT_TO_FIXED(target_e));
+    device(&in, &out);
+
+    // ask for max delta E
+    in.write(COMMAND_GET_DELTA_E);
+    device(&in, &out);
+    max_delta_e = FIXED_TO_FLOAT((int32_t)out.read());
+    max_delta_e_idx = out.read();
+
     // check if the answers line up
+    if (max_delta_e < (expected_max_delta_e - TEST_ERROR) ||
+        max_delta_e > (expected_max_delta_e + TEST_ERROR)) {
+        printf("TEST FAILED! MAX_DELTA_E mismatch!\n");
+        return 1;
+    }
+
     for (i = 0; i < ELEMENTS; i++) {
     	float lower = expected_e_bram[i] - TEST_ERROR;
     	float upper = expected_e_bram[i] + TEST_ERROR;

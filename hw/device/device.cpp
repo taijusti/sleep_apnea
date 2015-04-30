@@ -99,10 +99,8 @@ void device(hls::stream<uint32_t> * in, hls::stream<uint32_t> * out) {
     hls::stream<uint32_t> kkt_bram_fifo [PARTITIONS];
     uint32_t local_kkt_violators [PARTITIONS];
     float max_delta_e;
+    uint32_t max_delta_e_idx;
     uint32_t total_kkt_violators;
-
-    float temp0;
-    uint32_t temp1;
 
     uint32_t command = in->read();
 
@@ -146,10 +144,11 @@ void device(hls::stream<uint32_t> * in, hls::stream<uint32_t> * out) {
 
     case COMMAND_GET_DELTA_E:
         // run the delta E pipeline
-        delta_e(target_e, e_bram, &max_delta_e);
+        delta_e(target_e, e_bram, &max_delta_e, &max_delta_e_idx);
 
         // return the max delta E
         out->write(FLOAT_TO_FIXED(max_delta_e));
+        out->write(max_delta_e_idx);
         break;
 
     case COMMAND_GET_POINT:
@@ -174,7 +173,6 @@ void device(hls::stream<uint32_t> * in, hls::stream<uint32_t> * out) {
 
     case COMMAND_GET_E:
         i = in->read();
-        temp0 = e_bram[i];
         out->write(FLOAT_TO_FIXED(e_bram[i]));
         break;
 

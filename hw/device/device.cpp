@@ -29,9 +29,9 @@ static void init_device(data_t data [ELEMENTS], hls::stream<uint32_t> * in,
 }
 
 static void kkt_pipeline (data_t * point0, data_t * point1, data_t data [ELEMENTS],
-		float e_bram[ELEMENTS], float alpha [ELEMENTS], bool y [ELEMENTS],
-		hls::stream<uint32_t> * kkt_bram_fifo, uint32_t * kkt_violators,
-		float y1_delta_alpha1_product, float y2_delta_alpha2_product,
+        float e_bram[ELEMENTS], float alpha [ELEMENTS], bool y [ELEMENTS],
+        hls::stream<uint32_t> * kkt_bram_fifo, uint32_t * kkt_violators,
+        float y1_delta_alpha1_product, float y2_delta_alpha2_product,
         float delta_b, uint32_t idx) {
 #pragma HLS DATAFLOW
 
@@ -65,12 +65,12 @@ static void kkt_pipeline (data_t * point0, data_t * point1, data_t data [ELEMENT
     // actual pipeline
     k(point0, point1, &data_fifo, &k1_fifo, &k2_fifo);
     e(&e_bram_in_fifo, &e_bram_out_fifo, &e_fifo, &k1_fifo, &k2_fifo,
-    		y1_delta_alpha1_product, y2_delta_alpha2_product, delta_b);
+            y1_delta_alpha1_product, y2_delta_alpha2_product, delta_b);
     kkt(&alpha_fifo, &y_fifo, &e_fifo, kkt_bram_fifo, kkt_violators);
 
     // scheduler which puts results back into the BRAM
     for (i = 0; i < PARTITION_ELEMENTS; i++) {
-    	float temp = e_bram_out_fifo.read(); // TODO for debug
+        float temp = e_bram_out_fifo.read(); // TODO for debug
         e_bram[i + idx] = temp;
     }
 }
@@ -123,7 +123,7 @@ void device(hls::stream<uint32_t> * in, hls::stream<uint32_t> * out) {
         for (i = 0; i < PARTITIONS; i++) {
         #pragma HLS UNROLL
              kkt_pipeline(&point0, &point1, data, e_bram, alpha, y, &(kkt_bram_fifo[i]),
-            		 local_kkt_violators + i, y1_delta_alpha1_product,
+                     local_kkt_violators + i, y1_delta_alpha1_product,
                      y2_delta_alpha2_product, delta_b, i * PARTITION_ELEMENTS);
         }
 
@@ -136,7 +136,7 @@ void device(hls::stream<uint32_t> * in, hls::stream<uint32_t> * out) {
 
         for (i = 0; i < PARTITIONS; i++) {
             for (j = 0; j < local_kkt_violators[i]; j++){
-            	uint32_t temp = kkt_bram_fifo[i].read() + (PARTITION_ELEMENTS * i);
+                uint32_t temp = kkt_bram_fifo[i].read() + (PARTITION_ELEMENTS * i);
                 out->write(temp);
             }
         }
@@ -181,16 +181,16 @@ void device(hls::stream<uint32_t> * in, hls::stream<uint32_t> * out) {
         break;
 
     case COMMAND_SET_Y1_ALPHA1_PRODUCT:
-    	y1_delta_alpha1_product = FIXED_TO_FLOAT((int32_t)in->read());
-    	break;
+        y1_delta_alpha1_product = FIXED_TO_FLOAT((int32_t)in->read());
+        break;
 
     case COMMAND_SET_Y2_ALPHA2_PRODUCT:
-    	y2_delta_alpha2_product = FIXED_TO_FLOAT((int32_t)in->read());
+        y2_delta_alpha2_product = FIXED_TO_FLOAT((int32_t)in->read());
         break;
 
     case COMMAND_SET_DELTA_B:
-    	delta_b = FIXED_TO_FLOAT((int32_t)in->read());
-    	break;
+        delta_b = FIXED_TO_FLOAT((int32_t)in->read());
+        break;
 
     default:
         // do nothing, break statement just to make compiler happy

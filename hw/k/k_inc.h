@@ -8,8 +8,8 @@
     #ifdef FULL_INTEG
         #include <stdint.h>
         #include <hls_stream.h>
-		void k (data_t * point0, data_t * point1, hls::stream<data_t> * data, hls::stream<float> * k0,
-			hls::stream<float> * k1);
+        void k (data_t * point0, data_t * point1, hls::stream<data_t> * data, hls::stream<float> * k0,
+            hls::stream<float> * k1);
 
     #else
         //typedef struct {

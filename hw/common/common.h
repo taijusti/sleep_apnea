@@ -9,7 +9,8 @@
 
     #define ABS(a) ((a) < 0 ? -(a) : (a))
     #define MAX(a,b) ((a) > (b) ? (a) : (b))
-    #define ELEMENTS (4096)
+    #define MIN(a,b) ((a) < (b) ? (a) : (b))
+    #define ELEMENTS (1024)
     #define DIMENSIONS (4)
 
     #ifdef FULL_INTEG

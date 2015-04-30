@@ -4,9 +4,9 @@
 #include <stdint.h>
 
 static float two_norm(data_t * point0, data_t * point1) {
-	float temp = 0;
-	float difference;
-	uint32_t i;
+    float temp = 0;
+    float difference;
+    uint32_t i;
 
     for (i = 0; i < DIMENSIONS; i++) {
         difference = point0->dim[i] - point1->dim[i];
@@ -30,8 +30,8 @@ void k (data_t * point0, data_t * point1, hls::stream<data_t> * data, hls::strea
     int k;
 
     for (k = 0; k < PARTITION_ELEMENTS; k++) {
-    	data_t temp = data->read();
-    	k0->write(k_engine_help(point0, &temp));
-    	k1->write(k_engine_help(point1, &temp));
+        data_t temp = data->read();
+        k0->write(k_engine_help(point0, &temp));
+        k1->write(k_engine_help(point1, &temp));
     }
 }

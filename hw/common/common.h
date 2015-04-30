@@ -9,6 +9,7 @@
 
     #define ABS(a) ((a) < 0 ? -(a) : (a))
     #define MAX(a,b) ((a) > (b) ? (a) : (b))
+    #define MIN(a,b) ((a) < (b) ? (a) : (b))
     #define ELEMENTS (1024)
     #define DIMENSIONS (4)
 
@@ -25,9 +26,9 @@
     #define COMMAND_GET_E                 (5)
     #define COMMAND_GET_KKT               (6)
     #define COMMAND_GET_DELTA_E           (7)
-	#define COMMAND_SET_Y1_ALPHA1_PRODUCT (8)
-	#define COMMAND_SET_Y2_ALPHA2_PRODUCT (9)
-	#define COMMAND_SET_DELTA_B           (10)
+    #define COMMAND_SET_Y1_ALPHA1_PRODUCT (8)
+    #define COMMAND_SET_Y2_ALPHA2_PRODUCT (9)
+    #define COMMAND_SET_DELTA_B           (10)
 
     #ifdef FULL_INTEG
         //typedef uint32_t fixed_t;

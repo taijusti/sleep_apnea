@@ -21,15 +21,15 @@ static bool isKKT(float alpha, bool y, float e) {
     }*/
     
     float yeProduct = y ? e : -e;
-	if (0 == alpha) {
-		return yeProduct >= ( -ERROR);
-	}
-	else if (C == alpha) {
-		return yeProduct <= ( ERROR);
-	}
-	else {
-		return yeProduct < ( ERROR) && yeProduct > ( -ERROR);
-	}
+    if (0 == alpha) {
+        return yeProduct >= ( -ERROR);
+    }
+    else if (C == alpha) {
+        return yeProduct <= ( ERROR);
+    }
+    else {
+        return yeProduct < ( ERROR) && yeProduct > ( -ERROR);
+    }
 }
 
 void kkt(float alpha[ELEMENTS], bool y [ELEMENTS], float e_fifo[ELEMENTS],

@@ -40,13 +40,13 @@ static uint32_t randFixed(void) {
 }
 
 static float sw_e(float e_old, float k1, float k2, float y1_delta_alpha1_product,
-		float y2_delta_alpha2_product, float delta_b) {
+        float y2_delta_alpha2_product, float delta_b) {
     return e_old + (k1 * y1_delta_alpha1_product) + (k2 * y2_delta_alpha2_product) + delta_b;
 }
 
 static bool sw_kkt(float alpha, bool y, float e) {
-	float u = (y ? 1 : -1) + e;
-	float yuProduct = y ? u : -u;
+    float u = (y ? 1 : -1) + e;
+    float yuProduct = y ? u : -u;
 
     if (0 == alpha) {
         return yuProduct >= (1 - ERROR);
@@ -129,7 +129,7 @@ int main(void) {
     in.write(COMMAND_INIT_DATA);
     for (i = 0; i < ELEMENTS; i++) {
         for (j = 0; j < DIMENSIONS; j++) {
-        	uint32_t temp = FLOAT_TO_FIXED(data[i].dim[j]);
+            uint32_t temp = FLOAT_TO_FIXED(data[i].dim[j]);
             in.write(temp);
         }
 
@@ -140,12 +140,12 @@ int main(void) {
     // set the points
     in.write(COMMAND_SET_POINT_0);
     for (i = 0; i < DIMENSIONS; i++) {
-    	in.write(FLOAT_TO_FIXED(point1.dim[i]));
+        in.write(FLOAT_TO_FIXED(point1.dim[i]));
     }
     device(&in, &out);
     in.write(COMMAND_SET_POINT_1);
     for (i = 0; i < DIMENSIONS; i++) {
-    	in.write(FLOAT_TO_FIXED(point2.dim[i]));
+        in.write(FLOAT_TO_FIXED(point2.dim[i]));
     }
     device(&in, &out);
 
@@ -167,7 +167,7 @@ int main(void) {
     device(&in, &out);
     kkt_violators = out.read();
     for (i = 0; i < kkt_violators; i++) {
-    	assert(!out.empty());
+        assert(!out.empty());
         kkt_bram[i] = out.read();
     }
 
@@ -182,9 +182,9 @@ int main(void) {
 
     // check if the answers line up
     for (i = 0; i < ELEMENTS; i++) {
-    	float lower = expected_e_bram[i] - TEST_ERROR;
-    	float upper = expected_e_bram[i] + TEST_ERROR;
-    	float temp = e_bram[i];
+        float lower = expected_e_bram[i] - TEST_ERROR;
+        float upper = expected_e_bram[i] + TEST_ERROR;
+        float temp = e_bram[i];
         if (!(e_bram[i] >= lower) || !(e_bram[i] <= upper)) {
             printf("TEST FAILED! E mismatch!\n");
             return 1;

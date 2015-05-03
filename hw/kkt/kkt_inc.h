@@ -9,8 +9,8 @@
 
     #ifdef FULL_INTEG
         #include <hls_stream.h>
-        void kkt(hls::stream<float> * alpha, hls::stream<bool> * y,
-                hls::stream<float> * e_fifo, hls::stream<uint32_t> * kkt_bram,
+        void kkt(hls::stream<fixed_t> * alpha, hls::stream<bool> * y,
+                hls::stream<fixed_t> * e_fifo, hls::stream<uint32_t> * kkt_bram,
                 uint32_t * kkt_violators);
 
     #else

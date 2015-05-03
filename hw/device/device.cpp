@@ -9,47 +9,47 @@
 #include "../k/k_inc.h"
 #include <stdint.h>
 #include <hls_stream.h>
-#include <assert.h>
-#include <stdio.h>
 
-static void init_device(data_t data [ELEMENTS], hls::stream<uint32_t> * in,
-        bool y [ELEMENTS], float e_bram [ELEMENTS], float alpha [ELEMENTS]) {
+using namespace std;
+
+static void init_device(data_t data [ELEMENTS], hls::stream<transmit_t> & in,
+        bool y [ELEMENTS], fixed_t e_bram [ELEMENTS], fixed_t alpha [ELEMENTS]) {
     uint32_t i, j;
 
     // initialize the BRAMs
     for (i = 0; i < ELEMENTS; i++) {
         for (j = 0; j < DIMENSIONS; j++) {
-            data[i].dim[j] = FIXED_TO_FLOAT(in->read());
+        	 recv(data[i].dim[j], in);
         }
 
-        y[i] = in->read();
+        recv(y[i], in);
         e_bram[i] = y[i] ? -1 : 1;
         alpha[i] = 0;
     }
 }
 
 static void kkt_pipeline (data_t * point0, data_t * point1, data_t data [ELEMENTS],
-        float e_bram[ELEMENTS], float alpha [ELEMENTS], bool y [ELEMENTS],
+        fixed_t e_bram[ELEMENTS], fixed_t alpha [ELEMENTS], bool y [ELEMENTS],
         hls::stream<uint32_t> * kkt_bram_fifo, uint32_t * kkt_violators,
-        float y1_delta_alpha1_product, float y2_delta_alpha2_product,
-        float delta_b, uint32_t idx) {
+        fixed_t y1_delta_alpha1_product, fixed_t y2_delta_alpha2_product,
+        fixed_t delta_b, uint32_t idx) {
 #pragma HLS DATAFLOW
 
-    hls::stream<float> k1_fifo;
+    hls::stream<fixed_t> k1_fifo;
     #pragma HLS STREAM variable=k1_fifo depth=64
-    hls::stream<float> k2_fifo;
+    hls::stream<fixed_t> k2_fifo;
     #pragma HLS STREAM variable=k2_fifo depth=64
-    hls::stream<float> e_fifo;
+    hls::stream<fixed_t> e_fifo;
     #pragma HLS STREAM variable=e_fifo depth=64
     hls::stream<data_t> data_fifo;
     #pragma HLS STREAM variable=data_fifo depth=64
-    hls::stream<float> alpha_fifo;
+    hls::stream<fixed_t> alpha_fifo;
     #pragma HLS STREAM variable=alpha_fifo depth=64
     hls::stream<bool> y_fifo;
     #pragma HLS STREAM variable=y_fifo depth=64
-    hls::stream<float> e_bram_in_fifo;
+    hls::stream<fixed_t> e_bram_in_fifo;
     #pragma HLS STREAM variable=e_bram_in_fifo depth=64
-    hls::stream<float> e_bram_out_fifo;
+    hls::stream<fixed_t> e_bram_out_fifo;
     #pragma HLS STREAM variable=e_bram_out_fifo depth=64
 
     // scheduler which pulls in data from the BRAM and puts it into the FIFOS
@@ -70,27 +70,26 @@ static void kkt_pipeline (data_t * point0, data_t * point1, data_t data [ELEMENT
 
     // scheduler which puts results back into the BRAM
     for (i = 0; i < PARTITION_ELEMENTS; i++) {
-        float temp = e_bram_out_fifo.read(); // TODO for debug
-        e_bram[i + idx] = temp;
+        e_bram[i + idx] = e_bram_out_fifo.read();
     }
 }
 
-void device(hls::stream<uint32_t> * in, hls::stream<uint32_t> * out) {
+void device(hls::stream<transmit_t> &in, hls::stream<transmit_t> &out) {
     unsigned int i, j;
 
     // internal buffers/memory/fifos
     static data_t data [ELEMENTS];
     #pragma HLS ARRAY_PARTITION variable=data cyclic factor=4 dim=2
-    static float alpha[ELEMENTS];
+    static fixed_t alpha[ELEMENTS];
     #pragma HLS ARRAY_PARTITION variable=alpha cyclic factor=8 dim=1
-    static float e_bram[ELEMENTS];
+    static fixed_t e_bram[ELEMENTS];
     #pragma HLS ARRAY_PARTITION variable=e_bram cyclic factor=8 dim=1
     static bool y[ELEMENTS];
     #pragma HLS ARRAY_PARTITION variable=y cyclic factor=8 dim=1
-    static float y1_delta_alpha1_product;
-    static float y2_delta_alpha2_product;
-    static float delta_b;
-    static float target_e;
+    static fixed_t y1_delta_alpha1_product;
+    static fixed_t y2_delta_alpha2_product;
+    static fixed_t delta_b;
+    static fixed_t target_e;
     static data_t point0;
     #pragma HLS ARRAY_PARTITION variable=point0.dim complete dim=1
     static data_t point1;
@@ -98,11 +97,12 @@ void device(hls::stream<uint32_t> * in, hls::stream<uint32_t> * out) {
 
     hls::stream<uint32_t> kkt_bram_fifo [PARTITIONS];
     uint32_t local_kkt_violators [PARTITIONS];
-    float max_delta_e;
+    fixed_t max_delta_e;
     uint32_t max_delta_e_idx;
     uint32_t total_kkt_violators;
 
-    uint32_t command = in->read();
+    uint32_t command;
+    recv(command, in);
 
     switch (command) {
     case COMMAND_INIT_DATA:
@@ -132,12 +132,12 @@ void device(hls::stream<uint32_t> * in, hls::stream<uint32_t> * out) {
         for (i = 0; i < PARTITIONS; i++) {
             total_kkt_violators += local_kkt_violators[i];
         }
-        out->write(total_kkt_violators);
+        send(total_kkt_violators, out);
 
         for (i = 0; i < PARTITIONS; i++) {
             for (j = 0; j < local_kkt_violators[i]; j++){
                 uint32_t temp = kkt_bram_fifo[i].read() + (PARTITION_ELEMENTS * i);
-                out->write(temp);
+                send(temp, out);
             }
         }
         break;
@@ -147,49 +147,49 @@ void device(hls::stream<uint32_t> * in, hls::stream<uint32_t> * out) {
         delta_e(target_e, e_bram, &max_delta_e, &max_delta_e_idx);
 
         // return the max delta E
-        out->write(FLOAT_TO_FIXED(max_delta_e));
-        out->write(max_delta_e_idx);
+        send(max_delta_e, out);
+        send(max_delta_e_idx, out);
         break;
 
     case COMMAND_GET_POINT:
-        j = in->read();
+    	recv(j, in);
 
         for (i = 0; i < DIMENSIONS; i++) {
-            out->write(FLOAT_TO_FIXED(data[j].dim[i]));
+        	send(data[j].dim[i], out);
         }
         break;
 
     case COMMAND_SET_POINT_0:
         for (i = 0; i < DIMENSIONS; i++) {
-            point0.dim[i] = FIXED_TO_FLOAT((int32_t)in->read());
+        	recv(point0.dim[i], in);
         }
         break;
 
     case COMMAND_SET_POINT_1:
         for (i = 0; i < DIMENSIONS; i++) {
-            point1.dim[i] = FIXED_TO_FLOAT((int32_t)in->read());
+        	recv(point1.dim[i], in);
         }
         break;
 
     case COMMAND_GET_E:
-        i = in->read();
-        out->write(FLOAT_TO_FIXED(e_bram[i]));
+    	recv(i, in);
+        send(e_bram[i], out);
         break;
 
     case COMMAND_SET_E:
-        target_e = FIXED_TO_FLOAT((int32_t)in->read());
+    	recv(target_e, in);
         break;
 
     case COMMAND_SET_Y1_ALPHA1_PRODUCT:
-        y1_delta_alpha1_product = FIXED_TO_FLOAT((int32_t)in->read());
+    	recv(y1_delta_alpha1_product, in);
         break;
 
     case COMMAND_SET_Y2_ALPHA2_PRODUCT:
-        y2_delta_alpha2_product = FIXED_TO_FLOAT((int32_t)in->read());
+    	recv(y2_delta_alpha2_product, in);
         break;
 
     case COMMAND_SET_DELTA_B:
-        delta_b = FIXED_TO_FLOAT((int32_t)in->read());
+    	recv(delta_b, in);
         break;
 
     default:

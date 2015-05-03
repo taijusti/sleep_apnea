@@ -13,7 +13,7 @@
 
     #ifdef FULL_INTEG
         #include <hls_stream.h>
-        void device(hls::stream<uint32_t> * in, hls::stream<uint32_t> * out);
+        void device(hls::stream<transmit_t> &in, hls::stream<transmit_t> &out);
 
     #else
         void device(data_t data [ELEMENTS], // TODO: remove

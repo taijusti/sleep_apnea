@@ -3,14 +3,12 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-    #include <stdint.h>
-
-    #define FULL_INTEG
+    //#define FULL_INTEG
 
     #define ABS(a) ((a) < 0 ? -(a) : (a))
     #define MAX(a,b) ((a) > (b) ? (a) : (b))
     #define MIN(a,b) ((a) < (b) ? (a) : (b))
-    #define ELEMENTS (1024)
+    #define ELEMENTS (4096)
     #define DIMENSIONS (4)
 
     #ifdef FULL_INTEG
@@ -31,15 +29,32 @@
 	#define COMMAND_SET_DELTA_B           (10)
 
     #ifdef FULL_INTEG
-        //typedef uint32_t fixed_t;
-        #define FIXED_TO_FLOAT(x) ((x) / 65536.0)
-        #define FLOAT_TO_FIXED(x) ((uint32_t) ((x) * 65536))
+    	#include <stdint.h>
+		#include <hls_stream.h>
+		#include <ap_fixed.h>
+
+        typedef ap_fixed<32, 16> fixed_t;
+
+		typedef union {
+			uint32_t ui;
+			int32_t i;
+			float f;
+			bool b;
+		} transmit_t;
 
         typedef struct {
-            float dim [DIMENSIONS];
+        	fixed_t dim [DIMENSIONS];
         } data_t;
 
-        float dotProduct(data_t * point1, data_t * point2);
+        fixed_t dotProduct(data_t * point1, data_t * point2);
+        void send(int32_t i, hls::stream<transmit_t> &fifo);
+        void send(uint32_t ui, hls::stream<transmit_t> &fifo);
+        void send(bool y, hls::stream<transmit_t> &fifo);
+        void send(fixed_t &f, hls::stream<transmit_t> &fifo);
+        void recv(int32_t &i, hls::stream<transmit_t> &fifo);
+        void recv(uint32_t &ui, hls::stream<transmit_t> &fifo);
+        void recv(bool &y, hls::stream<transmit_t> &fifo);
+        void recv(fixed_t &f, hls::stream<transmit_t> &fifo);
 
     #else
         typedef struct {

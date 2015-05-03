@@ -3,9 +3,9 @@
 #include "../common/common.h"
 #include <stdint.h>
 
-static float two_norm(data_t * point0, data_t * point1) {
-    float temp = 0;
-    float difference;
+static fixed_t two_norm(data_t * point0, data_t * point1) {
+	fixed_t temp = 0;
+    fixed_t difference;
     uint32_t i;
 
     for (i = 0; i < DIMENSIONS; i++) {
@@ -16,20 +16,24 @@ static float two_norm(data_t * point0, data_t * point1) {
     return temp;
 }
 
-static float exponential(float x) {
-    return expf((-x)  * inverse_sigma_squared);
+static fixed_t exponential(fixed_t x) {
+	float temp = x.to_float();
+	temp = expf((-temp)  * inverse_sigma_squared);
+	return temp;
 }
 
-static float k_engine_help(data_t * point0, data_t * point1) {
-    float temp = two_norm(point0, point1);
+static fixed_t k_engine_help(data_t * point0, data_t * point1) {
+	fixed_t temp = two_norm(point0, point1);
     return exponential(temp);
 }
 
-void k (data_t * point0, data_t * point1, hls::stream<data_t> * data, hls::stream<float> * k0,
-        hls::stream<float> * k1) {
+void k (data_t * point0, data_t * point1, hls::stream<data_t> * data,
+		hls::stream<fixed_t> * k0, hls::stream<fixed_t> * k1) {
+	#pragma HLS DATAFLOW
     int k;
 
     for (k = 0; k < PARTITION_ELEMENTS; k++) {
+		#pragma HLS PIPELINE
         data_t temp = data->read();
         k0->write(k_engine_help(point0, &temp));
         k1->write(k_engine_help(point1, &temp));

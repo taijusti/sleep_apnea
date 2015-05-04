@@ -4,9 +4,6 @@
     #include <stdbool.h>
     #include <stdint.h>
 
-    #define C (5)
-    #define ERROR (0.1)
-
     #ifdef FULL_INTEG
         #include <hls_stream.h>
         void kkt(hls::stream<fixed_t> & alpha, hls::stream<bool> & y,

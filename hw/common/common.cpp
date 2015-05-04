@@ -36,9 +36,17 @@ void send(int32_t i, hls::stream<transmit_t> &fifo) {
 
 void send(fixed_t &f, hls::stream<transmit_t> &fifo) {
 	transmit_t temp;
-	//temp.ui = f.to_float();
+
 	temp.ui = f.range(31, 0);
 	fifo.write(temp);
+}
+
+void send(data_t & point, hls::stream<transmit_t> & fifo) {
+    uint32_t i;
+
+    for (i = 0; i < DIMENSIONS; i++) {
+        send(point.dim[i], fifo);
+    }
 }
 
 void recv(bool &y, hls::stream<transmit_t> &fifo) {
@@ -55,4 +63,13 @@ void recv(int32_t &i, hls::stream<transmit_t> &fifo) {
 
 void recv(fixed_t &f, hls::stream<transmit_t> &fifo) {
 	f(31, 0) = fifo.read().ui;
+}
+
+void recv(data_t & point, hls::stream<transmit_t> & fifo) {
+    uint32_t i;
+    transmit_t temp;
+
+    for (i = 0; i < DIMENSIONS; i++) {
+        recv(point.dim[i], fifo);
+    }
 }

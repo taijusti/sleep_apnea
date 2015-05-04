@@ -8,6 +8,8 @@
     #ifdef FULL_INTEG
         #include <stdint.h>
         #include <hls_stream.h>
+
+        fixed_t k (data_t & point0, data_t & point1);
         void k (data_t & point0, data_t & point1, hls::stream<data_t> & data,
         		hls::stream<fixed_t> & k0, hls::stream<fixed_t> & k1);
 

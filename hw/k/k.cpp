@@ -38,6 +38,12 @@ static fixed_t k_engine_help(data_t & point0, data_t & point1) {
     return exponential(temp);
 }
 
+// used manager side, should be latency optimized
+fixed_t k (data_t & point0, data_t & point1) {
+    return k_engine_help(point0, point1);
+}
+
+// should be throughput optimized
 void k (data_t & point0, data_t & point1, hls::stream<data_t> & data,
 		hls::stream<fixed_t> & k0, hls::stream<fixed_t> & k1) {
 	//#pragma HLS INLINE

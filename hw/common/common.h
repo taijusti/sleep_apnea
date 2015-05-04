@@ -10,6 +10,8 @@
     #define MIN(a,b) ((a) < (b) ? (a) : (b))
     #define ELEMENTS (4096)
     #define DIMENSIONS (4)
+	#define C (5)
+	#define ERROR (0.1)
 
     #ifdef FULL_INTEG
         #define PARTITIONS (2)
@@ -51,10 +53,12 @@
         void send(uint32_t ui, hls::stream<transmit_t> &fifo);
         void send(bool y, hls::stream<transmit_t> &fifo);
         void send(fixed_t &f, hls::stream<transmit_t> &fifo);
+        void send(data_t &f, hls::stream<transmit_t> &fifo);
         void recv(int32_t &i, hls::stream<transmit_t> &fifo);
         void recv(uint32_t &ui, hls::stream<transmit_t> &fifo);
         void recv(bool &y, hls::stream<transmit_t> &fifo);
         void recv(fixed_t &f, hls::stream<transmit_t> &fifo);
+        void recv(data_t &f, hls::stream<transmit_t> &fifo);
 
     #else
         typedef struct {

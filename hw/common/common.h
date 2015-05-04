@@ -12,7 +12,7 @@
     #define DIMENSIONS (4)
 
     #ifdef FULL_INTEG
-        #define PARTITIONS (4)
+        #define PARTITIONS (2)
         #define PARTITION_ELEMENTS (ELEMENTS / PARTITIONS)
     #endif
 

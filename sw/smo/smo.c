@@ -30,7 +30,7 @@ typedef struct {
 double * alpha;  // Langrange multipliers
 double * err;
 double b;
-DATA data[TEST_DATA_SIZE];;
+DATA data[TEST_DATA_SIZE];
 int numData;
 int numDim;
 
@@ -40,26 +40,22 @@ double dotProduct(DATA * a, DATA * b){
 
 	for (; i < numDim; i++) {
 		sum += a->dim[i] * b->dim[i];
-		//printf("qedewde data 1 %i   data 2  %i\n", a->dim[i], b->dim[i]);
 	}
 
 	return sum;
 }
 
-double gaussian(DATA * a, DATA * b)
-{
+double kernel(DATA * a, DATA * b) {
 	int i = 0;
 	double diff = 0;
 	double sum = 0;
 
 	for (; i < numDim; i++) {
 		diff = a->dim[i] - b->dim[i];
-		//printf("qedewde data 1 %i   data 2  %i\n", a->dim[i], b->dim[i
 		sum = sum + diff*diff;
 	}
 
 	return exp(-sum);
-
 }
 
 double classify(DATA * x, CLASSIFIER * classifier, int numDim) {
@@ -74,16 +70,10 @@ double classify(DATA * x, CLASSIFIER * classifier, int numDim) {
 	return sum;
 }
 
-double kernel(DATA * a, DATA * b) {
-//	return dotProduct(a,b);
-	return gaussian(a, b);
-}
-double classify_2( int classified_point)
-{
+double classify_2( int classified_point) {
 	int i;
 	double sum = 0;
-	for (i = 0; i < numData; i++)
-	{
+	for (i = 0; i < numData; i++) {
 		sum += alpha[i] * data[i].y * kernel(&data[i], &data[classified_point]);
 	}
 
@@ -91,9 +81,7 @@ double classify_2( int classified_point)
 	return sum;
 }
 
-double classify_new(DATA* classified_point)
-{
-
+double classify_new(DATA* classified_point) {
 	int i;
 	double sum = 0;
 	for (i = 0; i < numData; i++)
@@ -103,20 +91,9 @@ double classify_new(DATA* classified_point)
 
 	sum -= b;
 	return sum;
-
-
 }
-
-// linear transform
-DATA * transform(DATA * a) {
-	return a;
-}
-
-
 
 bool checkKKT(double alphas, double yuProduct) {
-
-
 	if (0 == alphas) {
 		return yuProduct >=  -0.001;
 	}
@@ -353,56 +330,40 @@ void smotrain(CLASSIFIER* x)
 
 // tests the SMO implementation
 int main(void) {
-	// randomly choose a weight vector and bias
-
-
-
-
-	//printf(" wefwe %06.3f", 3.0);
 	CLASSIFIER theoreticalClassifier;
 	int i;
 	int j;
 
+	// allocate data structuresstructures
 	theoreticalClassifier.dim = (double*)malloc(sizeof(double) * TEST_DIM);
 	numDim = TEST_DIM;
 	numData = TEST_DATA_SIZE;
-	
 
-	for (i = 0; i < TEST_DATA_SIZE; i++) 
-	{
+	for (i = 0; i < TEST_DATA_SIZE; i++) {
 		data[i].dim = (double*)malloc(sizeof(double) * TEST_DIM);
 	}
 
-
-
+	// parse in test data
 	FILE * fp;
-
 	fp = fopen("testInput.txt", "r+");
-
 	i = 0;
-	while (fscanf(fp,"%f    %f", &(data[i].dim[0]), &(data[i].dim[1])) == 2) 
-	{
+	while (fscanf(fp,"%f    %f", &(data[i].dim[0]), &(data[i].dim[1])) == 2) {
 		i++;
 	}
 
-	for (i = 0; i < TEST_DATA_SIZE; i++)
-	{
-	//	printf("x:%f y:%f \n", data[i].dim[0], data[i].dim[1]);
+	for (i = 0; i < TEST_DATA_SIZE; i++) {
 		if (i < 50)
 			data[i].y = -1;
 		else
 			data[i].y = 1;
 	}
 
-
-	
-
-
-
 	// try training using SMO
 	CLASSIFIER experimentalClassifier;
 	experimentalClassifier.dim = (double*)malloc(sizeof(double) * TEST_DIM);
 	smotrain(&experimentalClassifier);
+
+	// try classifying with both experimental and actual classifiers
 	double expectedResult;
 	double actualResult;
 	int mispredicts = 0;
@@ -422,10 +383,9 @@ int main(void) {
 		}
 		printf("expectedresult %f, actualresult %f \n", expectedResult, actualResult);
 	}
-
 	
 	for (i = 0; i < TEST_DATA_SIZE; i++)
 		printf("alpha[%i]: %f\n", i, alpha[i]);
-//	printf("mispredictions %i", mispredicts);
+
 	return 0;
 }

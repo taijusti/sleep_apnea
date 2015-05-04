@@ -3,12 +3,13 @@
 #include "../common/common.h"
 
 fixed_t dotProduct(data_t * point1, data_t * point2) {
-#pragma HLS PIPELINE
+    //#pragma HLS PIPELINE
+
     uint16_t i;
     fixed_t sum = 0;
 
     for (i = 0; i < DIMENSIONS; i++) {
-    #pragma HLS UNROLL
+    //#pragma HLS UNROLL
         sum += point1->dim[i] * point2->dim[i];
     }
 
@@ -53,6 +54,5 @@ void recv(int32_t &i, hls::stream<transmit_t> &fifo) {
 }
 
 void recv(fixed_t &f, hls::stream<transmit_t> &fifo) {
-	//f = fifo.read().f;
 	f(31, 0) = fifo.read().ui;
 }

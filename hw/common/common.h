@@ -12,6 +12,7 @@
     #define DIMENSIONS (4)
 	#define C (5)
 	#define ERROR (0.1)
+    #define TOLERANCE (0.001)
 
     #ifdef FULL_INTEG
         #define PARTITIONS (2)

@@ -7,133 +7,168 @@
 #include <stdint.h>
 #include <hls_stream.h>
 
-// TODO: rename?
-static void update_classifier(data_t & point0, bool y0, fixed_t & alpha0, fixed_t err0,
-        data_t & point1, bool y1, fixed_t & alpha1, fixed_t err1, fixed_t & b) {
-    // compute eta (symbol looks like a 'n')
-    fixed_t k11 = k(point0, point0);
-    fixed_t k22 = k(point1, point1);
-    fixed_t k12 = k(point0, point1);
-    fixed_t n = k11 + k22 - (2 * k12);
-    fixed_t s;
+static void take_step(data_t & point1, fixed_t & alpha1, bool y1, fixed_t err1,
+        data_t & point2, fixed_t & alpha2, bool y2, fixed_t err2, fixed_t & b) {
     fixed_t low;
     fixed_t high;
+    fixed_t s;
+    fixed_t k11;
+    fixed_t k12;
+    fixed_t k22;
+    fixed_t n;
     fixed_t alpha1New;
-    fixed_t alpha1NewClipped;
-    fixed_t alpha0New;
+    fixed_t alpha2New;
+    fixed_t alpha2NewClipped;
     fixed_t f1;
     fixed_t f2;
-    fixed_t l1;
     fixed_t h1;
+    fixed_t l1;
     fixed_t psiL;
     fixed_t psiH;
+    fixed_t bNew;
+    fixed_t b1;
+    fixed_t b2;
+
+    // compute n (eta)
+    k11 = k(point1, point1);
+    k12 = k(point1, point2);
+    k22 = k(point2, point2);
+    n = k11 + k22 - (2 * k12);
 
     // compute high and low boundaries
-    if (y0 == y1) {
+    if (y1 == y2) {
         s = 1;
-        low = MAX(0, alpha0 + alpha1 - C);
-        high = MIN(C, alpha0 + alpha1);
+        low = MAX(0, alpha1 + alpha2 - C);
+        high = MIN(C, alpha1 + alpha2);
     }
     else {
         s = -1;
-        low = MAX(0, alpha1 - alpha0);
-        high = MIN(C, C + alpha1 - alpha0);
+        low = MAX(0, alpha2 - alpha1);
+        high = MIN(C, C + alpha2 - alpha1);
     }
 
-    // TODO: what about the case where low == high?
+    // TODO: is this right?
+    if (low == high) {
+        return;
+    }
 
-    // compute alpha1
+    // compute alpha2. just a bunch of equations copied from the
+    // smo paper/book
     if (n > 0) {
-        alpha1New = alpha1 + (y1 * (err0 - err1) / n);
-        if (alpha1New > high) {
-            alpha1NewClipped = high;
+        alpha2New = alpha2 + (y1 * (err1 - err2) / n);
+
+        if (alpha2New > high) {
+            alpha2NewClipped = high;
         }
         else if (alpha1New < low) {
-            alpha1NewClipped = low;
+            alpha2NewClipped = low;
         }
         else {
-            alpha1NewClipped = alpha1New;
+            alpha2NewClipped = alpha2New;
         }
     }
     else {
-        f1 = y0 * (err0 + b) - alpha0 * k11 - s * alpha1 * k12;
-        f2 = y1 * (err1 + b) - s * alpha0 * k12 - alpha1 * k22;
-        l1 = alpha0 + s * (alpha1 - low);
-        h1 = alpha0 + s * (alpha1 - high);
-        psiL = l1 * f1
-            + low * f2
-            + 0.5 * l1 * l1 * k11
-            + 0.5 * low * low*k22
-            + s *l1 * low * k12;
-        psiH = h1 * f1
-            + high * f2
-            + 0.5 * h1 * h1 * k11
-            + 0.5 * high * high * k22
-            + s * h1 * high * k12;
+        f1 = y1 * (err1 + b) - (alpha1 * k11) - (s * alpha1 * k12);
+        f2 = y2 * (err2 + b) - (s * alpha1 * k12) - (alpha2 * k22);
+        l1 = alpha1 + s * (alpha2 - low);
+        h1 = alpha1 + s * (alpha2 - high);
+        psiL = (l1 * f1)
+                + (low * f2)
+                + (l1 * l1 * k11 / 2)
+                + (low * low * k22 / 2)
+                + (s *l1 * low * k12);
+        psiH = (h1 * f1)
+                + (high * f2)
+                + (h1 * h1 * k11 / 2)
+                + (high * high * k22 / 2)
+                + (s * h1 * high * k12);
 
-        if (psiL < psiH - 0.001)
-            alpha1NewClipped = low;
-
-        else if (psiL > psiH + 0.001)
-            alpha1NewClipped = high;
-
-        else
-            alpha1NewClipped = alpha1;
+        if (psiL < psiH - TOLERANCE) {
+            alpha2NewClipped = low;
+        }
+        else if (psiL > psiH + TOLERANCE) {
+            alpha2NewClipped = high;
+        }
+        else{
+            alpha2NewClipped = alpha1;
+        }
     }
 
-    // compute alpha0
-    alpha0New = alpha0 + s * (alpha1 - alpha1NewClipped);
+    // TODO: add check if alpha2 changes significantly
 
-    // compute b
-    double bNew;
-    double b1 = err0
-            + (y0 * (alpha0New - alpha0) * k11)
-            + (y1 * (alpha1New - alpha1) * k12)
-            + b;
-    double b2 = err1
-            + (y0 * (alpha0New - alpha0) * k12)
-            + (y1 * (alpha1NewClipped - alpha1) * k22)
-            + b;
+    // compute the new alpha1. just another equation copied from
+    // the smo paper/book
+    alpha1New = alpha1 + s * (alpha2 - alpha2NewClipped);
 
-    if ((alpha0New > 0) && (alpha0New < C)){
+    // compute the new b. some more equations copied from the smo
+    // paper/book
+    b1 = err1
+        + (y1 * (alpha1New - alpha1) * k11)
+        + (y2 * (alpha2NewClipped - alpha2) * k12)
+        + b;
+    b2 = err2
+        + (y1 * (alpha1New - alpha1) * k12)
+        + (y2 * (alpha2NewClipped - alpha2) * k22)
+        + b;
+
+    if ((alpha1New > 0) && (alpha1New < C)){
         bNew = b1;
     }
-    else if ((alpha1NewClipped > 0) && (alpha1NewClipped < C)) {
+    else if ((alpha2NewClipped > 0) && (alpha2NewClipped < C)) {
         bNew = b2;
     }
     else {
-        bNew = (b1 + b2) / (2);
+        bNew = (b1 + b2) / 2;
     }
 
-    // update alphas and b
+    // all the calculations were successful, update the values
+    alpha1 = alpha1New;
+    alpha2 = alpha2NewClipped;
     b = bNew;
-    alpha0 = alpha0New;
-    alpha1 = alpha1NewClipped;
 }
 
+// TODO: figure out how host will get data, alpha, and b
 void host(data_t data [ELEMENTS], fixed_t alpha [ELEMENTS], fixed_t & b,
         bool y [ELEMENTS], hls::stream<transmit_t> & in,
         hls::stream<transmit_t> & out) {
     bool changed = false;
     uint32_t i;
     uint32_t kkt_violators = 0;
-    data_t point0;
-    uint32_t point0_idx;
-    fixed_t err0;
+
     data_t point1;
+    bool y1;
     uint32_t point1_idx;
     fixed_t err1;
+
+    data_t point2;
+    bool y2;
+    uint32_t point2_idx;
+    fixed_t err2;
+
     fixed_t max_delta_e;
     uint32_t max_delta_e_idx;
+    fixed_t alpha1;
+    fixed_t alpha1_old;
+    fixed_t alpha2;
+    fixed_t alpha2_old;
+    fixed_t delta_a;
+    fixed_t b_old;
+    fixed_t delta_b;
+    fixed_t y_delta_alpha_product;
 
     // initialize device(s)
+    // TODO: overwrite when we figure out how the host FPGA
+    // is going to accept data
     send(COMMAND_INIT_DATA, out);
     for (i = 0; i < ELEMENTS; i++) {
         send(data[i], out);
         send(y[i], out);
     }
 
-    // main loop
+    // main loop of SMO
+    // note: we intentionally do not utilize the data and alpha arrays here.
+    // there should only be one value of these, which should be distributed
+    // amongst the client FPGAs.
     while (changed) {
         changed = false;
 
@@ -145,29 +180,29 @@ void host(data_t data [ELEMENTS], fixed_t alpha [ELEMENTS], fixed_t & b,
             uint32_t temp;
             recv(temp, out);
 
+            // TODO: should keep incrementing
             if (i == 0) {
-                point0_idx = temp;
+                point1_idx = temp;
             }
         }
 
         // get the first point
-        // TODO: should keep incrementing
         send(COMMAND_GET_POINT, out);
-        send(point0_idx, out);
-        recv(point0, in);
+        send(point1_idx, out);
+        recv(point1, in);
 
         // b-cast to all FPGAs to set the first point
         send(COMMAND_SET_POINT_0, out);
-        send(point0, out);
+        send(point1, out);
 
         // get the E associated with that point
         send(COMMAND_GET_E, out);
-        send(point0_idx, out);
-        recv(err0, in);
+        send(point1_idx, out);
+        recv(err1, in);
 
         // set the E
         send(COMMAND_SET_E, out);
-        send(err0, out);
+        send(err1, out);
 
         // choose second point based on max delta E
         send(COMMAND_GET_DELTA_E, out);
@@ -177,25 +212,66 @@ void host(data_t data [ELEMENTS], fixed_t alpha [ELEMENTS], fixed_t & b,
 
         // get the second point
         send(COMMAND_GET_POINT, out);
-        send(point1_idx, out);
-        recv(point1, in);
+        send(point2_idx, out);
+        recv(point2, in);
 
         // get its E value
         send(COMMAND_GET_E, out);
-        send(point1_idx, out);
-        recv(err1, in);
+        send(point2_idx, out);
+        recv(err2, in);
 
         // b-cast to all FPGAs to set the second point
         send(COMMAND_SET_POINT_1, out);
-        send(point1, out);
+        send(point2, out);
 
-        // update alphas and betas
-        update_classifier(point0, y[point0_idx], alpha[], err0,
-                point1, y[point1_idx], alpha1, err1, b);
+        // get alphas
+        // send(COMMAND_GET_ALPHA, out);
+        // send(point1_idx, out);
+        // recv(alpha1, in);
+        // send(COMMAND_GET_ALPHA, out);
+        // send(point1_idx, out);
+        // recv(alpha1, in);
 
-        // bcast the new alphas and betas
+        // at this point we have all the information we need for a single
+        // iteration. compute the new alphas and b.
+        take_step(point1, alpha1, y1, err1,
+                point2, alpha2, y2, err2, b);
+
+        // unicast the new alpha to the appropriate FPGA
+        // TODO: uncomment when support has been added
+        //send(COMMAND_SET_ALPHA, out);
+        //send(point1_idx, out);
+        //send(alpha1, out);
+        //send(COMMAND_SET_ALPHA, out);
+        //send(point2_idx, out);
+        //send(alpha2, out);
+
+        // compute and broadcast the y1 * delta alpha1 product
+        delta_a = alpha1 - alpha1_old;
+        y_delta_alpha_product = (y1 ? 1 : -1) * delta_a;
         send(COMMAND_SET_Y1_ALPHA1_PRODUCT, out);
+        send(y_delta_alpha_product, out);
+
+        // compute and broadcast the y2 * delta alpha2 product
+        delta_a = alpha2 - alpha2_old;
+        y_delta_alpha_product = (y2 ? 1 : -1) * delta_a;
         send(COMMAND_SET_Y2_ALPHA2_PRODUCT, out);
+        send(y_delta_alpha_product, out);
+
+        // compute and broadcast delta b
+        delta_b = b - b_old;
         send(COMMAND_SET_DELTA_B, out);
+        send(delta_b, out);
     }
+
+    // get the results
+    // TODO: overwrite when we figure out how the host FPGA is going
+    // to return the classifier
+    /*
+    for (i = 0; i < ELEMENTS; i++) {
+        send(COMMAND_GET_ALPHA, out);
+        send(i, out);
+        recv(alpha[i], in);
+    }
+    */
 }

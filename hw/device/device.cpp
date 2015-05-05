@@ -9,6 +9,7 @@
 #include "../k/k_inc.h"
 #include <stdint.h>
 #include <hls_stream.h>
+#include <stdio.h>
 
 using namespace std;
 
@@ -219,6 +220,16 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
 
     case COMMAND_SET_DELTA_B:
         recv(delta_b, in);
+        break;
+
+    case COMMAND_GET_ALPHA:
+        recv(i, in);
+        send(alpha[i], out);
+        break;
+
+    case COMMAND_SET_ALPHA:
+        recv(i, in);
+        recv(alpha[i], in);
         break;
 
     default:

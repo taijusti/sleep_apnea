@@ -89,6 +89,10 @@ int main(void) {
     hls::stream<transmit_t> in;
     hls::stream<transmit_t> out;
 
+    ////////////////////////////////////////////////////////////
+    /////////GENERATE INPUT VECTOR / EXPECTED OUTPUT////////////
+    ////////////////////////////////////////////////////////////
+
     // initialize everything
     y1_delta_alpha1_product = randFixed();
     y2_delta_alpha2_product = randFixed();
@@ -96,7 +100,7 @@ int main(void) {
     for (i = 0; i < ELEMENTS; i++) {
         y[i] = randFixed() > 0.5;
         e_bram[i] = y[i] ? -1 : 1;
-        alpha[i] = 0;
+        alpha[i] = randFixed();
         for (j = 0; j < DIMENSIONS; j++) {
             data[i].dim[j] = randFixed();
         }
@@ -145,6 +149,10 @@ int main(void) {
         }
     }
 
+    ////////////////////////////////////////////////////////////
+    //////////////CONFIGURE THE DEVICE//////////////////////////
+    ////////////////////////////////////////////////////////////
+
     // run the module, starting with initializing the device
     send(COMMAND_INIT_DATA, in);
     for (i = 0; i < ELEMENTS; i++) {
@@ -169,6 +177,14 @@ int main(void) {
     }
     device(in, out);
 
+    //set the alphas
+    for (i = 0; i < ELEMENTS; i++) {
+        send(COMMAND_SET_ALPHA, in);
+        send(i, in);
+        send(alpha[i], in);
+        device(in, out);
+    }
+
     // set the delta alpha products
     send(COMMAND_SET_Y1_ALPHA1_PRODUCT, in);
     send(y1_delta_alpha1_product, in);
@@ -182,6 +198,15 @@ int main(void) {
     send(delta_b, in);
     device(in, out);
 
+    // set target E
+    send(COMMAND_SET_E, in);
+    send(target_e, in);
+    device(in, out);
+
+    ////////////////////////////////////////////////////////////
+    ////////////////COMPUTE EVERYTHING//////////////////////////
+    ////////////////////////////////////////////////////////////
+
     // compute and get KKT violators
     send(COMMAND_GET_KKT, in);
     device(in, out);
@@ -190,7 +215,17 @@ int main(void) {
         recv(kkt_bram[i], out);
     }
 
-    // get E
+    // compute delta E
+    send(COMMAND_GET_DELTA_E, in);
+    device(in, out);
+    recv(max_delta_e, out);
+    recv(max_delta_e_idx, out);
+
+    ////////////////////////////////////////////////////////////
+    //////////////////GET ALL RESULTS///////////////////////////
+    ////////////////////////////////////////////////////////////
+
+    // ask for all E values
     for (i = 0; i < ELEMENTS; i++) {
         send(COMMAND_GET_E, in);
         send(i, in);
@@ -198,33 +233,18 @@ int main(void) {
         recv(e_bram[i], out);
     }
 
-    // set target E
-    send(COMMAND_SET_E, in);
-    send(target_e, in);
-    device(in, out);
+    ////////////////////////////////////////////////////////////
+    //////////////////CHECKING PHASE////////////////////////////
+    ////////////////////////////////////////////////////////////
 
-    // ask for max delta E
-    send(COMMAND_GET_DELTA_E, in);
-    device(in, out);
-    recv(max_delta_e, out);
-    recv(max_delta_e_idx, out);
-
-    for (i = 0; i < ELEMENTS; i++) {
-    	fixed_t lower = expected_e_bram[i] - fixed_t(TEST_ERROR);
-    	fixed_t upper = expected_e_bram[i] + fixed_t(TEST_ERROR);
-    	fixed_t temp = e_bram[i];
-        if (!(e_bram[i] >= lower) || !(e_bram[i] <= upper)) {
-            printf("TEST FAILED! E mismatch!\n");
-            return 1;
-        }
-    }
-
+    // check if the # of kkt violators match our expected # of kkt violators
     if (expected_kkt_violators != kkt_violators) {
         printf("TEST FAILED! # of KKT violators mismatch! expected: %d\tactual: %d\n",
                expected_kkt_violators, kkt_violators);
         return 1;
     }
 
+    // check if the kkt violating entries match our expected kkt violators
     for (i = 0; i < kkt_violators; i++) {
         if (kkt_bram[i] != expected_kkt_bram[i]) {
             printf("TEST FAILED! KKT violator entry mismatch!\n");
@@ -232,7 +252,18 @@ int main(void) {
         }
     }
 
-    // check if the answers line up
+    // check if all the Es match up
+    for (i = 0; i < ELEMENTS; i++) {
+        fixed_t lower = expected_e_bram[i] - fixed_t(TEST_ERROR);
+        fixed_t upper = expected_e_bram[i] + fixed_t(TEST_ERROR);
+        fixed_t temp = e_bram[i];
+        if (!(e_bram[i] >= lower) || !(e_bram[i] <= upper)) {
+            printf("TEST FAILED! E mismatch!\n");
+            return 1;
+        }
+    }
+
+    // check that the max delta e value matches with our expected max delta e
     if (max_delta_e < (expected_max_delta_e - fixed_t(TEST_ERROR)) ||
         max_delta_e > (expected_max_delta_e + fixed_t(TEST_ERROR))) {
         printf("TEST FAILED! MAX_DELTA_E mismatch!\n");

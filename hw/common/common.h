@@ -3,7 +3,7 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-    //#define FULL_INTEG
+    #define FULL_INTEG
 
     #define ABS(a) ((a) < 0 ? -(a) : (a))
     #define MAX(a,b) ((a) > (b) ? (a) : (b))
@@ -30,6 +30,8 @@
 	#define COMMAND_SET_Y1_ALPHA1_PRODUCT (8)
 	#define COMMAND_SET_Y2_ALPHA2_PRODUCT (9)
 	#define COMMAND_SET_DELTA_B           (10)
+    #define COMMAND_GET_ALPHA             (11)
+    #define COMMAND_SET_ALPHA             (12)
 
     #ifdef FULL_INTEG
     	#include <stdint.h>

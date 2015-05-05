@@ -2,12 +2,12 @@
 
 #include "../common/common.h"
 #include "host_inc.h"
-#include "../k/k.cpp"
+#include "../k/k_inc.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <hls_stream.h>
 
-static void take_step(data_t & point1, fixed_t & alpha1, bool y1, fixed_t err1,
+static bool take_step(data_t & point1, fixed_t & alpha1, bool y1, fixed_t err1,
         data_t & point2, fixed_t & alpha2, bool y2, fixed_t err2, fixed_t & b) {
     fixed_t low;
     fixed_t high;
@@ -28,6 +28,7 @@ static void take_step(data_t & point1, fixed_t & alpha1, bool y1, fixed_t err1,
     fixed_t bNew;
     fixed_t b1;
     fixed_t b2;
+    fixed_t temp; // TODO: debug
 
     // compute n (eta)
     k11 = k(point1, point1);
@@ -38,23 +39,27 @@ static void take_step(data_t & point1, fixed_t & alpha1, bool y1, fixed_t err1,
     // compute high and low boundaries
     if (y1 == y2) {
         s = 1;
-        low = MAX(0, alpha1 + alpha2 - C);
-        high = MIN(C, alpha1 + alpha2);
+        temp = alpha1 + alpha2 - fixed_t(C) ;
+        low = MAX(fixed_t(0), temp);
+        temp = alpha1 + alpha2;
+        high = MIN(fixed_t(C), temp);
     }
     else {
         s = -1;
-        low = MAX(0, alpha2 - alpha1);
-        high = MIN(C, C + alpha2 - alpha1);
+        temp = alpha2 - alpha1;
+        low = MAX(fixed_t(0), temp);
+        temp = fixed_t(C) + alpha2 - alpha1;
+        high = MIN(fixed_t(C), temp);
     }
 
     // TODO: is this right?
     if (low == high) {
-        return;
+        return false;
     }
 
     // compute alpha2. just a bunch of equations copied from the
     // smo paper/book
-    if (n > 0) {
+    if (n > fixed_t(0)) {
         alpha2New = alpha2 + (y1 * (err1 - err2) / n);
 
         if (alpha2New > high) {
@@ -83,10 +88,10 @@ static void take_step(data_t & point1, fixed_t & alpha1, bool y1, fixed_t err1,
                 + (high * high * k22 / 2)
                 + (s * h1 * high * k12);
 
-        if (psiL < psiH - TOLERANCE) {
+        if (psiL < (psiH - fixed_t(TOLERANCE))) {
             alpha2NewClipped = low;
         }
-        else if (psiL > psiH + TOLERANCE) {
+        else if (psiL > (psiH + fixed_t(TOLERANCE))) {
             alpha2NewClipped = high;
         }
         else{
@@ -125,22 +130,29 @@ static void take_step(data_t & point1, fixed_t & alpha1, bool y1, fixed_t err1,
     alpha1 = alpha1New;
     alpha2 = alpha2NewClipped;
     b = bNew;
+
+    return true;
 }
 
 // TODO: figure out how host will get data, alpha, and b
 void host(data_t data [ELEMENTS], fixed_t alpha [ELEMENTS], fixed_t & b,
         bool y [ELEMENTS], hls::stream<transmit_t> & in,
         hls::stream<transmit_t> & out) {
-    bool changed = false;
+    bool changed;
+    bool point1_set;
     uint32_t i;
     uint32_t kkt_violators = 0;
+    uint32_t cur_kkt_violator = 0;
+    uint32_t temp;
 
     data_t point1;
+    #pragma HLS ARRAY_PARTITION variable=point1.dim complete dim=1
     bool y1;
     uint32_t point1_idx;
     fixed_t err1;
 
     data_t point2;
+    #pragma HLS ARRAY_PARTITION variable=point2.dim dim=1
     bool y2;
     uint32_t point2_idx;
     fixed_t err2;
@@ -169,109 +181,118 @@ void host(data_t data [ELEMENTS], fixed_t alpha [ELEMENTS], fixed_t & b,
     // note: we intentionally do not utilize the data and alpha arrays here.
     // there should only be one value of these, which should be distributed
     // amongst the client FPGAs.
-    while (changed) {
+    do {
         changed = false;
 
-        // get device(s) to find KKT violators. choose the first KKT
-        // violator as the first point and flush the FIFO
-        send(COMMAND_GET_KKT, out);
-        recv(kkt_violators, in);
-        for (i = 0; i < kkt_violators; i++) {
-            uint32_t temp;
-            recv(temp, out);
-
-            // TODO: should keep incrementing
-            if (i == 0) {
-                point1_idx = temp;
+        for (i = 0; i < ELEMENTS; i++) {
+            // get device(s) to find KKT violators. choose the first KKT
+            // violator as the first point and flush the FIFO
+            send(COMMAND_GET_KKT, out);
+            recv(kkt_violators, in);
+            if (kkt_violators == 0) {
+                changed = false;
+                break;
             }
+
+            point1_set = false;
+            for (i = 0; i < kkt_violators; i++) {
+                uint32_t temp;
+                recv(temp, in);
+
+                // TODO: should keep incrementing
+                if (temp > point1_idx && !point1_set) {
+                    point1_idx = temp;
+                    point1_set = true;
+                }
+            }
+
+            // get the first point
+            send(COMMAND_GET_POINT, out);
+            send(point1_idx, out);
+            recv(point1, in);
+
+            // b-cast to all FPGAs to set the first point
+            send(COMMAND_SET_POINT_0, out);
+            send(point1, out);
+
+            // get the E associated with that point
+            send(COMMAND_GET_E, out);
+            send(point1_idx, out);
+            recv(err1, in);
+
+            // set the E
+            send(COMMAND_SET_E, out);
+            send(err1, out);
+
+            // choose second point based on max delta E
+            send(COMMAND_GET_DELTA_E, out);
+            recv(max_delta_e, in);
+            recv(max_delta_e_idx, in);
+            point1_idx = max_delta_e_idx;
+
+            // get the second point
+            send(COMMAND_GET_POINT, out);
+            send(point2_idx, out);
+            recv(point2, in);
+
+            // get its E value
+            send(COMMAND_GET_E, out);
+            send(point2_idx, out);
+            recv(err2, in);
+
+            // b-cast to all FPGAs to set the second point
+            send(COMMAND_SET_POINT_1, out);
+            send(point2, out);
+
+            // get alphas
+            send(COMMAND_GET_ALPHA, out);
+            send(point1_idx, out);
+            recv(alpha1, in);
+            send(COMMAND_GET_ALPHA, out);
+            send(point1_idx, out);
+            recv(alpha1, in);
+
+            // at this point we have all the information we need for a single
+            // iteration. compute the new alphas and b.
+            alpha1_old = alpha1;
+            alpha2_old = alpha2;
+            b_old = b;
+            changed |= take_step(point1, alpha1, y1, err1,
+                                point2, alpha2, y2, err2, b);
+
+            // unicast the new alpha to the appropriate FPGA
+            send(COMMAND_SET_ALPHA, out);
+            send(point1_idx, out);
+            send(alpha1, out);
+            send(COMMAND_SET_ALPHA, out);
+            send(point2_idx, out);
+            send(alpha2, out);
+
+            // compute and broadcast the y1 * delta alpha1 product
+            delta_a = alpha1 - alpha1_old;
+            y_delta_alpha_product = (y1 ? 1 : -1) * delta_a;
+            send(COMMAND_SET_Y1_ALPHA1_PRODUCT, out);
+            send(y_delta_alpha_product, out);
+
+            // compute and broadcast the y2 * delta alpha2 product
+            delta_a = alpha2 - alpha2_old;
+            y_delta_alpha_product = (y2 ? 1 : -1) * delta_a;
+            send(COMMAND_SET_Y2_ALPHA2_PRODUCT, out);
+            send(y_delta_alpha_product, out);
+
+            // compute and broadcast delta b
+            delta_b = b - b_old;
+            send(COMMAND_SET_DELTA_B, out);
+            send(delta_b, out);
         }
-
-        // get the first point
-        send(COMMAND_GET_POINT, out);
-        send(point1_idx, out);
-        recv(point1, in);
-
-        // b-cast to all FPGAs to set the first point
-        send(COMMAND_SET_POINT_0, out);
-        send(point1, out);
-
-        // get the E associated with that point
-        send(COMMAND_GET_E, out);
-        send(point1_idx, out);
-        recv(err1, in);
-
-        // set the E
-        send(COMMAND_SET_E, out);
-        send(err1, out);
-
-        // choose second point based on max delta E
-        send(COMMAND_GET_DELTA_E, out);
-        recv(max_delta_e, in);
-        recv(max_delta_e_idx, in);
-        point1_idx = max_delta_e_idx;
-
-        // get the second point
-        send(COMMAND_GET_POINT, out);
-        send(point2_idx, out);
-        recv(point2, in);
-
-        // get its E value
-        send(COMMAND_GET_E, out);
-        send(point2_idx, out);
-        recv(err2, in);
-
-        // b-cast to all FPGAs to set the second point
-        send(COMMAND_SET_POINT_1, out);
-        send(point2, out);
-
-        // get alphas
-        // send(COMMAND_GET_ALPHA, out);
-        // send(point1_idx, out);
-        // recv(alpha1, in);
-        // send(COMMAND_GET_ALPHA, out);
-        // send(point1_idx, out);
-        // recv(alpha1, in);
-
-        // at this point we have all the information we need for a single
-        // iteration. compute the new alphas and b.
-        take_step(point1, alpha1, y1, err1,
-                point2, alpha2, y2, err2, b);
-
-        // unicast the new alpha to the appropriate FPGA
-        // TODO: uncomment when support has been added
-        //send(COMMAND_SET_ALPHA, out);
-        //send(point1_idx, out);
-        //send(alpha1, out);
-        //send(COMMAND_SET_ALPHA, out);
-        //send(point2_idx, out);
-        //send(alpha2, out);
-
-        // compute and broadcast the y1 * delta alpha1 product
-        delta_a = alpha1 - alpha1_old;
-        y_delta_alpha_product = (y1 ? 1 : -1) * delta_a;
-        send(COMMAND_SET_Y1_ALPHA1_PRODUCT, out);
-        send(y_delta_alpha_product, out);
-
-        // compute and broadcast the y2 * delta alpha2 product
-        delta_a = alpha2 - alpha2_old;
-        y_delta_alpha_product = (y2 ? 1 : -1) * delta_a;
-        send(COMMAND_SET_Y2_ALPHA2_PRODUCT, out);
-        send(y_delta_alpha_product, out);
-
-        // compute and broadcast delta b
-        delta_b = b - b_old;
-        send(COMMAND_SET_DELTA_B, out);
-        send(delta_b, out);
-    }
+    } while(changed);
 
     // get the results
     // TODO: overwrite when we figure out how the host FPGA is going
     // to return the classifier
-    /*
     for (i = 0; i < ELEMENTS; i++) {
         send(COMMAND_GET_ALPHA, out);
         send(i, out);
         recv(alpha[i], in);
     }
-    */
 }

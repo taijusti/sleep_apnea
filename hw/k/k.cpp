@@ -49,9 +49,9 @@ void k (data_t & point0, data_t & point1, hls::stream<data_t> & data,
 	//#pragma HLS INLINE
 	//#pragma HLS DATAFLOW
 
-    int k;
+    int i;
 
-    for (k = 0; k < PARTITION_ELEMENTS; k++) {
+    for (i = 0; i < PARTITION_ELEMENTS; i++) {
 		#pragma HLS PIPELINE
         data_t temp = data.read();
         k0.write(k_engine_help(point0, temp));

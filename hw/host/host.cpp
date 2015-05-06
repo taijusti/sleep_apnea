@@ -7,6 +7,12 @@
 #include <stdint.h>
 #include <hls_stream.h>
 
+#define DEBUG
+
+#ifdef DEBUG
+#include "../device/device_inc.h"
+#endif
+
 static bool take_step(data_t & point1, fixed_t & alpha1, bool y1, fixed_t err1,
         data_t & point2, fixed_t & alpha2, bool y2, fixed_t err2, fixed_t & b) {
     fixed_t low;
@@ -176,6 +182,9 @@ void host(data_t data [ELEMENTS], fixed_t alpha [ELEMENTS], fixed_t & b,
         send(data[i], out);
         send(y[i], out);
     }
+#ifdef DEBUG
+    device(out, in);
+#endif
 
     // main loop of SMO
     // note: we intentionally do not utilize the data and alpha arrays here.
@@ -188,6 +197,9 @@ void host(data_t data [ELEMENTS], fixed_t alpha [ELEMENTS], fixed_t & b,
             // get device(s) to find KKT violators. choose the first KKT
             // violator as the first point and flush the FIFO
             send(COMMAND_GET_KKT, out);
+#ifdef DEBUG
+            device(out, in);
+#endif
             recv(kkt_violators, in);
             if (kkt_violators == 0) {
                 changed = false;
@@ -199,7 +211,6 @@ void host(data_t data [ELEMENTS], fixed_t alpha [ELEMENTS], fixed_t & b,
                 uint32_t temp;
                 recv(temp, in);
 
-                // TODO: should keep incrementing
                 if (temp > point1_idx && !point1_set) {
                     point1_idx = temp;
                     point1_set = true;
@@ -209,23 +220,38 @@ void host(data_t data [ELEMENTS], fixed_t alpha [ELEMENTS], fixed_t & b,
             // get the first point
             send(COMMAND_GET_POINT, out);
             send(point1_idx, out);
+#ifdef DEBUG
+            device(out, in);
+#endif
             recv(point1, in);
 
             // b-cast to all FPGAs to set the first point
             send(COMMAND_SET_POINT_0, out);
             send(point1, out);
+#ifdef DEBUG
+            device(out, in);
+#endif
 
             // get the E associated with that point
             send(COMMAND_GET_E, out);
             send(point1_idx, out);
             recv(err1, in);
+#ifdef DEBUG
+            device(out, in);
+#endif
 
             // set the E
             send(COMMAND_SET_E, out);
             send(err1, out);
+#ifdef DEBUG
+            device(out, in);
+#endif
 
             // choose second point based on max delta E
             send(COMMAND_GET_DELTA_E, out);
+#ifdef DEBUG
+            device(out, in);
+#endif
             recv(max_delta_e, in);
             recv(max_delta_e_idx, in);
             point1_idx = max_delta_e_idx;
@@ -233,23 +259,39 @@ void host(data_t data [ELEMENTS], fixed_t alpha [ELEMENTS], fixed_t & b,
             // get the second point
             send(COMMAND_GET_POINT, out);
             send(point2_idx, out);
+#ifdef DEBUG
+            device(out, in);
+#endif
             recv(point2, in);
 
             // get its E value
             send(COMMAND_GET_E, out);
             send(point2_idx, out);
+#ifdef DEBUG
+            device(out, in);
+#endif
             recv(err2, in);
 
             // b-cast to all FPGAs to set the second point
             send(COMMAND_SET_POINT_1, out);
             send(point2, out);
+#ifdef DEBUG
+            device(out, in);
+#endif
 
             // get alphas
             send(COMMAND_GET_ALPHA, out);
             send(point1_idx, out);
+#ifdef DEBUG
+            device(out, in);
+#endif
             recv(alpha1, in);
+
             send(COMMAND_GET_ALPHA, out);
             send(point1_idx, out);
+#ifdef DEBUG
+            device(out, in);
+#endif
             recv(alpha1, in);
 
             // at this point we have all the information we need for a single
@@ -264,26 +306,42 @@ void host(data_t data [ELEMENTS], fixed_t alpha [ELEMENTS], fixed_t & b,
             send(COMMAND_SET_ALPHA, out);
             send(point1_idx, out);
             send(alpha1, out);
+#ifdef DEBUG
+            device(out, in);
+#endif
+
             send(COMMAND_SET_ALPHA, out);
             send(point2_idx, out);
             send(alpha2, out);
+#ifdef DEBUG
+            device(out, in);
+#endif
 
             // compute and broadcast the y1 * delta alpha1 product
             delta_a = alpha1 - alpha1_old;
             y_delta_alpha_product = (y1 ? 1 : -1) * delta_a;
             send(COMMAND_SET_Y1_ALPHA1_PRODUCT, out);
             send(y_delta_alpha_product, out);
+#ifdef DEBUG
+            device(out, in);
+#endif
 
             // compute and broadcast the y2 * delta alpha2 product
             delta_a = alpha2 - alpha2_old;
             y_delta_alpha_product = (y2 ? 1 : -1) * delta_a;
             send(COMMAND_SET_Y2_ALPHA2_PRODUCT, out);
             send(y_delta_alpha_product, out);
+#ifdef DEBUG
+            device(out, in);
+#endif
 
             // compute and broadcast delta b
             delta_b = b - b_old;
             send(COMMAND_SET_DELTA_B, out);
             send(delta_b, out);
+#ifdef DEBUG
+            device(out, in);
+#endif
         }
     } while(changed);
 
@@ -293,6 +351,9 @@ void host(data_t data [ELEMENTS], fixed_t alpha [ELEMENTS], fixed_t & b,
     for (i = 0; i < ELEMENTS; i++) {
         send(COMMAND_GET_ALPHA, out);
         send(i, out);
+#ifdef DEBUG
+            device(out, in);
+#endif
         recv(alpha[i], in);
     }
 }

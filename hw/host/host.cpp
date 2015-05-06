@@ -99,7 +99,16 @@ static bool take_step(data_t & point1, fixed_t & alpha1, bool y1, fixed_t err1,
         }
     }
 
-    // TODO: add check if alpha2 changes significantly
+    // check if alpha2 changes significantly
+    // ABS macro cannot be used in fixed_t, explicitly coded instead
+    fixed_t ABS_alpha2_diff = (alpha2NewClipped - alpha2);
+    if (ABS_alpha2_diff < 0) {
+    	ABS_alpha2_diff *= -1;
+    }
+
+    if (ABS_alpha2_diff < fixed_t(EPSILON)*(alpha2NewClipped + alpha2 + fixed_t(EPSILON))) {
+    	return false;
+    }
 
     // compute the new alpha1. just another equation copied from
     // the smo paper/book

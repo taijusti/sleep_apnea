@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <hls_stream.h>
+#include <math.h>
 
 static bool take_step(data_t & point1, fixed_t & alpha1, bool y1, fixed_t err1,
         data_t & point2, fixed_t & alpha2, bool y2, fixed_t err2, fixed_t & b) {
@@ -146,7 +147,8 @@ static bool take_step(data_t & point1, fixed_t & alpha1, bool y1, fixed_t err1,
 // TODO: figure out how host will get data, alpha, and b
 void host(data_t data [ELEMENTS], fixed_t alpha [ELEMENTS], fixed_t & b,
         bool y [ELEMENTS], hls::stream<transmit_t> & in,
-        hls::stream<transmit_t> & out) {
+        hls::stream<transmit_t> & out,
+        uint32_t rnd1, uint32_t rnd2) {
     bool changed;
     bool point1_set;
     uint32_t i;
@@ -176,6 +178,9 @@ void host(data_t data [ELEMENTS], fixed_t alpha [ELEMENTS], fixed_t & b,
     fixed_t b_old;
     fixed_t delta_b;
     fixed_t y_delta_alpha_product;
+
+    uint32_t start_idx_heu1 = rnd1 % ELEMENTS;
+    uint32_t start_idx_heu2 = rnd2 % ELEMENTS;
 
     // initialize device(s)
     // TODO: overwrite when we figure out how the host FPGA
@@ -237,7 +242,7 @@ void host(data_t data [ELEMENTS], fixed_t alpha [ELEMENTS], fixed_t & b,
             send(COMMAND_GET_DELTA_E, out);
             recv(max_delta_e, in);
             recv(max_delta_e_idx, in);
-            point1_idx = max_delta_e_idx;
+            point2_idx = max_delta_e_idx;
 
             // get the second point
             send(COMMAND_GET_POINT, out);
@@ -258,8 +263,8 @@ void host(data_t data [ELEMENTS], fixed_t alpha [ELEMENTS], fixed_t & b,
             send(point1_idx, out);
             recv(alpha1, in);
             send(COMMAND_GET_ALPHA, out);
-            send(point1_idx, out);
-            recv(alpha1, in);
+            send(point2_idx, out);
+            recv(alpha2, in);
 
             // at this point we have all the information we need for a single
             // iteration. compute the new alphas and b.
@@ -268,6 +273,81 @@ void host(data_t data [ELEMENTS], fixed_t alpha [ELEMENTS], fixed_t & b,
             b_old = b;
             changed |= take_step(point1, alpha1, y1, err1,
                                 point2, alpha2, y2, err2, b);
+
+            // Second point heuristic: Hierarchy #1 - loop over all non-bound alphas
+            if (!changed) {
+            	//start_idx_heu1 = rand() % ELEMENTS;
+            	for (i = start_idx_heu1; i < (start_idx_heu1 + ELEMENTS); i++) {
+            		point2_idx = i % ELEMENTS;
+
+            		// get the second point
+                    send(COMMAND_GET_POINT, out);
+                    send(point2_idx, out);
+                    recv(point2, in);
+
+                    // get its E value
+                    send(COMMAND_GET_E, out);
+                    send(point2_idx, out);
+                    recv(err2, in);
+
+                    // b-cast to all FPGAs to set the second point
+                    send(COMMAND_SET_POINT_1, out);
+                    send(point2, out);
+
+                    // get alpha for the second point of heuristic #1
+                    send(COMMAND_GET_ALPHA, out);
+                    send(point2_idx, out);
+                    recv(alpha2, in);
+
+                    // evaluate new alpha2 for heuristic #1
+                    alpha2_old = alpha2;
+                    b_old = b;
+                    if ((alpha2 != 0) && (alpha2 != C)) {
+                    	changed |= take_step(point1, alpha1, y1, err1,
+                    	                    point2, alpha2, y2, err2, b);
+                    }
+                    if (changed) {
+                    	break;
+                    }
+                }
+            }
+
+            // Second point heuristic: Hierarchy #2 - loop entire training set
+            if (!changed) {
+            	//start_idx_heu2 = rand() % ELEMENTS;
+            	for (i = start_idx_heu2; i < (start_idx_heu2 + ELEMENTS); i++) {
+            		point2_idx = i % ELEMENTS;
+
+            		// get the second point
+                    send(COMMAND_GET_POINT, out);
+                    send(point2_idx, out);
+                    recv(point2, in);
+
+                    // get its E value
+                    send(COMMAND_GET_E, out);
+                    send(point2_idx, out);
+                    recv(err2, in);
+
+                    // b-cast to all FPGAs to set the second point
+                    send(COMMAND_SET_POINT_1, out);
+                    send(point2, out);
+
+                    // get alpha for the second point of heuristic #1
+                    send(COMMAND_GET_ALPHA, out);
+                    send(point2_idx, out);
+                    recv(alpha2, in);
+
+                    // evaluate new alpha2 for heuristic #2
+                    alpha2_old = alpha2;
+                    b_old = b;
+                    changed |= take_step(point1, alpha1, y1, err1,
+                    	                point2, alpha2, y2, err2, b);
+
+                    if (changed) {
+                    	break;
+                    }
+                }
+            }
 
             // unicast the new alpha to the appropriate FPGA
             send(COMMAND_SET_ALPHA, out);

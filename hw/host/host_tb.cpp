@@ -192,8 +192,6 @@ bool examineExample(int d2Idx, data_t training_data [ELEMENTS], bool y [ELEMENTS
     {
         if (takeStep(training_data[d1Idx], training_data[d2Idx], err1, err2,
                 y[d1Idx], y[d2Idx], alpha[d1Idx], alpha[d2Idx], b)) {
-            printf("modified alpha[%d]=%f\talpha[%d]=%f\tb=%f\n",
-                    d1Idx, alpha[d1Idx], d2Idx, alpha[d2Idx], b);
             return true;
         }
     }
@@ -210,9 +208,6 @@ bool examineExample(int d2Idx, data_t training_data [ELEMENTS], bool y [ELEMENTS
 
             if (takeStep(training_data[i % ELEMENTS], training_data[d2Idx], err1, err2,
                     y[i % ELEMENTS], y[d2Idx], alpha[i % ELEMENTS], alpha[d2Idx], b)) {
-                d1Idx = i % ELEMENTS;
-                printf("modified alpha[%d]=%f\talpha[%d]=%f\tb=%f\n",
-                        d1Idx, alpha[d1Idx], d2Idx, alpha[d2Idx], b);
                 return true;
             }
         }
@@ -228,9 +223,6 @@ bool examineExample(int d2Idx, data_t training_data [ELEMENTS], bool y [ELEMENTS
 
         if (takeStep(training_data[i % ELEMENTS], training_data[d2Idx], err1, err2,
                 y[i % ELEMENTS], y[d2Idx], alpha[i % ELEMENTS], alpha[d2Idx], b)) {
-            d1Idx = i % ELEMENTS;
-            printf("modified alpha[%d]=%f\talpha[%d]=%f\tb=%f\n",
-                    d1Idx, alpha[d1Idx], d2Idx, alpha[d2Idx], b);
             return true;
         }
     }
@@ -278,57 +270,43 @@ int main(void) {
     data_t data [ELEMENTS];
     bool y [ELEMENTS];
     float alpha_expected [ELEMENTS];
-    float alpha_actual [ELEMENTS];
+    fixed_t alpha_actual [ELEMENTS];
     float b_expected;
-    float b_actual;
+    fixed_t b_actual;
     uint32_t i;
     uint32_t j;
-    FILE * fp = fopen("/mnt/hdd/github/sleep_apnea/sw/smo/testInput.txt", "r+");
+    hls::stream<transmit_t> in;
+    hls::stream<transmit_t> out;
 
     // randomly generate training data
     for (i = 0; i < ELEMENTS; i++) {
-        /*
         for (j = 0; j < DIMENSIONS; j++) {
             data[i].dim[j] = randFloat();
         }
-        */
-        float temp0;
-        float temp1;
-        fscanf(fp,"%f    %f", &temp0, &temp1);
-        data[i].dim[0] = temp0;
-        data[i].dim[1] = temp1;
     }
 
     // generate the y's
     // TODO: should this use the classifier rather than being randomly generated?
     for (i = 0; i < ELEMENTS; i++) {
-        y[i] = i >= 50;
-        //y[i] = randFloat() > 0.5;
+        y[i] = randFloat() > 0.5;
     }
 
     // try to train
     smotrain(data, y, alpha_expected, b_expected);
 
     // try the actual
-    //host();
-
-    printf("Final:\n");
-    for (i = 0; i < ELEMENTS; i++) {
-        printf("alpha[%d]=%f\n", i, alpha_expected[i]);
-    }
-    printf("b=%f\n", b_expected);
+    host(data, alpha_actual, b_actual, y, in, out);
 
     // check if the returned alphas matches within some error
     for (i = 0; i < ELEMENTS; i++) {
-        if (!EQ_ERR(alpha_actual[i], alpha_expected[i], ERROR)) {
-            printf("TEST FAILED! alpha mismatch! expected=%f\tactual=%f\n",
-                    alpha_expected[i], alpha_actual[i]);
+        if (!EQ_ERR(alpha_actual[i].to_float(), alpha_expected[i], ERROR)) {
+            printf("TEST FAILED! alpha mismatch!\n");
             return 1;
         }
     }
 
     // check if the returned b matches within some error
-    if (!EQ_ERR(b_expected, b_actual, ERROR)) {
+    if (!EQ_ERR(b_expected, b_actual.to_float(), ERROR)) {
         printf("TEST FAILED! b mismatch!\n");
         return 1;
     }

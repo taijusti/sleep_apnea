@@ -1,9 +1,12 @@
 #include "../common/common.h"
 #include "host_inc.h"
+#include <stdio.h>
 
 #define EQ_ERR(a,b,err) (ABS((a) - (b)) < (err))
 #define GT_ERR(a,b,err) (((a) - (b)) > (err))
 #define LT_ERR(a,b,err) (((a) - (b)) < -(err))
+
+using namespace std;
 
 float randFloat(void) {
     return (float)rand() / RAND_MAX;
@@ -27,7 +30,7 @@ static float classify(float alpha [ELEMENTS], float b, data_t training_data [ELE
     int i;
     float sum = 0;
     for (i = 0; i < ELEMENTS; i++) {
-        sum += alpha[i] * y[i] * kernel(training_data[i], point);
+        sum += alpha[i] * (y[i] ? 1 : -1) * kernel(training_data[i], point);
     }
 
     sum -= b;
@@ -37,28 +40,38 @@ static float classify(float alpha [ELEMENTS], float b, data_t training_data [ELE
 static bool isKKT(float alpha, bool y, float e) {
     float yeProduct = y ? e : -e;
     if (0 == alpha) {
-        return yeProduct >= ( -ERROR);
+        return yeProduct >= ( -0.001);
     }
     else if (C == alpha) {
-        return yeProduct <= ( ERROR);
+        return yeProduct <= ( 0.001);
     }
     else {
-        return yeProduct < ( ERROR) && yeProduct > ( -ERROR);
+        return yeProduct < ( 0.001) && yeProduct > ( -0.001);
     }
 }
 
-int takeStep(data_t & point1, data_t & point2, float err1, float err2,
+bool takeStep(data_t & point1, data_t & point2, float err1, float err2,
         bool y1, bool y2, float & alpha1, float & alpha2, float & b) {
 
-    double k11, k22, k12,n;
+    float k11, k22, k12, n;
     k11 = kernel(point1, point1);
     k22 = kernel(point2, point2);
     k12 = kernel(point1, point2);
     n = k11 + k22 - (2 * k12);
-
-    double low, high;
-    double alpha2New;
+    uint32_t i;
+    float low, high;
+    float alpha2New;
     int s = y1 == y2 ? 1 : -1;
+
+    for (i = 0; i < DIMENSIONS; i++) {
+        if (point1.dim[i] != point2.dim[i]) {
+            break;
+        }
+    }
+    if (i == DIMENSIONS) {
+        return false;
+    }
+
 
     if (y1 == y2) {
         low = MAX(0, alpha2 + alpha1 - C);
@@ -70,12 +83,12 @@ int takeStep(data_t & point1, data_t & point2, float err1, float err2,
     }
 
     if (low == high) {
-        return 0;
+        return false;
     }
 
-    double f1, f2, l1, h1, psiL, psiH,alpha2NewClipped;
+    float f1, f2, l1, h1, psiL, psiH,alpha2NewClipped;
     if (n > 0) {
-        alpha2New = alpha2 + (((y2 * (err1 - err2)) / (n * 1.0)));
+        alpha2New = alpha2 + ((((y2 ? 1 : -1) * (err1 - err2)) / (n * 1.0)));
         alpha2NewClipped = alpha2New;
         if (alpha2New < low)
             alpha2NewClipped = low;
@@ -118,19 +131,19 @@ int takeStep(data_t & point1, data_t & point2, float err1, float err2,
     if (ABS(alpha2NewClipped - alpha2)
         < 0.001 * (alpha2NewClipped + alpha2 + 0.001))
     {
-        return 0;
+        return false;
     }
 
     // compute alpha1
-    double alpha1New = alpha1 + s * (alpha2 - alpha2NewClipped);
+    float alpha1New = alpha1 + s * (alpha2 - alpha2NewClipped);
 
     // updating the threshold
-    double bNew;
-    double b1 = err1
+    float bNew;
+    float b1 = err1
         + (y1 ? 1 : -1) * (alpha1New - alpha1) * k11
         + (y2 ? 1 : -1) * (alpha2NewClipped - alpha2) * k12
         + b;
-    double b2 = err2
+    float b2 = err2
         + (y1 ? 1 : -1) * (alpha1New - alpha1) * k12
         + (y2 ? 1 : -1) * (alpha2NewClipped - alpha2) * k22
         + b;
@@ -148,20 +161,19 @@ int takeStep(data_t & point1, data_t & point2, float err1, float err2,
     b = bNew;
     alpha1 = alpha1New;
     alpha2 = alpha2NewClipped;
-
-    return 1;
+    return true;
 }
 
 bool examineExample(int d2Idx, data_t training_data [ELEMENTS], bool y [ELEMENTS],
         float alpha [ELEMENTS], float & b) {
     int i,d1Idx;
-    double maxErr = -1;
-    double err, err1, err2;
+    float maxErr = -1;
+    float err, err1, err2;
     err2 = classify(alpha, b, training_data, y, training_data[d2Idx]) - (y[d2Idx] ? 1 : -1);
 
     // do something with this point only if it is a kKT violator
     if (isKKT(alpha[d2Idx], y[d2Idx], err2)) {
-        return 0;
+        return false;
     }
 
     // find first point to do work on
@@ -180,38 +192,49 @@ bool examineExample(int d2Idx, data_t training_data [ELEMENTS], bool y [ELEMENTS
     {
         if (takeStep(training_data[d1Idx], training_data[d2Idx], err1, err2,
                 y[d1Idx], y[d2Idx], alpha[d1Idx], alpha[d2Idx], b)) {
+            printf("modified alpha[%d]=%f\talpha[%d]=%f\tb=%f\n",
+                    d1Idx, alpha[d1Idx], d2Idx, alpha[d2Idx], b);
             return true;
         }
     }
-/*
+
     // the step was invalid, as a second heuristic, we
     // loop over all non-zero and non-C alpha, starting
     // at a random point, looking for a valid point to
     // take a step on
-    int start = rand() % numData;
-    for (i = start; i < start + numData; i++)
+    int start = rand() % ELEMENTS;
+    for (i = start; i < start + ELEMENTS; i++)
     {
-        if ((alpha[i% numData] != 0) && (alpha[i% numData] != C))
-        {
-            err1 = classify_2(i%numData) - data[i%numData].y;
-            if (takeStep(d2Idx, i%numData, err2, err1))
-                return 1;
-        }
+        if ((alpha[i % ELEMENTS] != 0) && (alpha[i % ELEMENTS] != C)) {
+            err1 = classify(alpha, b, training_data, y, training_data[i % ELEMENTS]) - (y[i % ELEMENTS] ? 1 : -1);
 
+            if (takeStep(training_data[i % ELEMENTS], training_data[d2Idx], err1, err2,
+                    y[i % ELEMENTS], y[d2Idx], alpha[i % ELEMENTS], alpha[d2Idx], b)) {
+                d1Idx = i % ELEMENTS;
+                printf("modified alpha[%d]=%f\talpha[%d]=%f\tb=%f\n",
+                        d1Idx, alpha[d1Idx], d2Idx, alpha[d2Idx], b);
+                return true;
+            }
+        }
     }
 
     // could not find a valid point amongst all non-zero and
     // non-C examples, we now iterate over all examples as
     // a final effort to take a step on this point
-    start = rand() % numData;
-    for (i = start; i < start + numData; i++)
-    {
-        err1 = classify_2(i%numData) - data[i%numData].y;
-        if (takeStep(d2Idx, i%numData, err2, err1))
-            return 1;
+    start = rand() % ELEMENTS;
+    for (i = start; i < start + ELEMENTS; i++) {
+        err1 = classify(alpha, b, training_data, y, training_data[i % ELEMENTS])
+                - (y[i % ELEMENTS] ? 1 : -1);
 
+        if (takeStep(training_data[i % ELEMENTS], training_data[d2Idx], err1, err2,
+                y[i % ELEMENTS], y[d2Idx], alpha[i % ELEMENTS], alpha[d2Idx], b)) {
+            d1Idx = i % ELEMENTS;
+            printf("modified alpha[%d]=%f\talpha[%d]=%f\tb=%f\n",
+                    d1Idx, alpha[d1Idx], d2Idx, alpha[d2Idx], b);
+            return true;
+        }
     }
-*/
+
     return false;
 }
 
@@ -250,6 +273,8 @@ void smotrain(data_t training_data [ELEMENTS], bool y [ELEMENTS],
 }
 
 int main(void) {
+
+
     data_t data [ELEMENTS];
     bool y [ELEMENTS];
     float alpha_expected [ELEMENTS];
@@ -258,18 +283,27 @@ int main(void) {
     float b_actual;
     uint32_t i;
     uint32_t j;
+    FILE * fp = fopen("/mnt/hdd/github/sleep_apnea/sw/smo/testInput.txt", "r+");
 
     // randomly generate training data
     for (i = 0; i < ELEMENTS; i++) {
+        /*
         for (j = 0; j < DIMENSIONS; j++) {
             data[i].dim[j] = randFloat();
         }
+        */
+        float temp0;
+        float temp1;
+        fscanf(fp,"%f    %f", &temp0, &temp1);
+        data[i].dim[0] = temp0;
+        data[i].dim[1] = temp1;
     }
 
     // generate the y's
     // TODO: should this use the classifier rather than being randomly generated?
     for (i = 0; i < ELEMENTS; i++) {
-        y[i] = randFloat() > 0.5;
+        y[i] = i >= 50;
+        //y[i] = randFloat() > 0.5;
     }
 
     // try to train
@@ -278,10 +312,17 @@ int main(void) {
     // try the actual
     //host();
 
+    printf("Final:\n");
+    for (i = 0; i < ELEMENTS; i++) {
+        printf("alpha[%d]=%f\n", i, alpha_expected[i]);
+    }
+    printf("b=%f\n", b_expected);
+
     // check if the returned alphas matches within some error
     for (i = 0; i < ELEMENTS; i++) {
         if (!EQ_ERR(alpha_actual[i], alpha_expected[i], ERROR)) {
-            printf("TEST FAILED! alpha mismatch!\n");
+            printf("TEST FAILED! alpha mismatch! expected=%f\tactual=%f\n",
+                    alpha_expected[i], alpha_actual[i]);
             return 1;
         }
     }

@@ -265,8 +265,6 @@ void smotrain(data_t training_data [ELEMENTS], bool y [ELEMENTS],
 }
 
 int main(void) {
-
-
     data_t data [ELEMENTS];
     bool y [ELEMENTS];
     float alpha_expected [ELEMENTS];
@@ -277,18 +275,20 @@ int main(void) {
     uint32_t j;
     hls::stream<transmit_t> in;
     hls::stream<transmit_t> out;
+    FILE * fp = fopen("/home/taijusti/Documents/github/sleep_apnea/sw/smo/svmguide1-t.txt", "r");
 
     // randomly generate training data
     for (i = 0; i < ELEMENTS; i++) {
-        for (j = 0; j < DIMENSIONS; j++) {
-            data[i].dim[j] = randFloat();
-        }
-    }
-
-    // generate the y's
-    // TODO: should this use the classifier rather than being randomly generated?
-    for (i = 0; i < ELEMENTS; i++) {
-        y[i] = randFloat() > 0.5;
+        float temp0;
+        float temp1;
+        float temp2;
+        float temp3;
+        fscanf(fp, " %d %f %f %f %f",
+                &(y[i]), &temp0, &temp1, &temp2, &temp3);
+        data[i].dim[0] = temp0;
+        data[i].dim[1] = temp1;
+        data[i].dim[2] = temp2;
+        data[i].dim[3] = temp3;
     }
 
     // try to train
@@ -299,6 +299,7 @@ int main(void) {
 
     // check if the returned alphas matches within some error
     for (i = 0; i < ELEMENTS; i++) {
+        cout << alpha_actual[i] << "," << alpha_expected[i] << endl;
         if (!EQ_ERR(alpha_actual[i].to_float(), alpha_expected[i], ERROR)) {
             printf("TEST FAILED! alpha mismatch!\n");
             return 1;

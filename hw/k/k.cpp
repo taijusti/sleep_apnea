@@ -3,6 +3,8 @@
 #include "../common/common.h"
 #include <stdint.h>
 
+using namespace std;
+
 static fixed_t two_norm(data_t & point0, data_t & point1) {
 	//#pragma HLS PIPELINE
 	//#pragma HLS INLINE
@@ -20,12 +22,13 @@ static fixed_t two_norm(data_t & point0, data_t & point1) {
     return temp;
 }
 
-static fixed_t exponential(fixed_t x) {
+static fixed_t exponential(fixed_t & x) {
 	//#pragma HLS PIPELINE
 	//#pragma HLS INLINE
 
-	float temp = x.to_float();
-	temp = expf((-temp) * inverse_sigma_squared);
+	float temp = x.to_float(); // TODO: for debug
+	//temp = expf((-temp) * inverse_sigma_squared);
+	temp = expf(-temp);
 	return temp;
 }
 

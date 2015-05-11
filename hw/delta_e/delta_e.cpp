@@ -2,11 +2,16 @@
 
 #include "delta_e_inc.h"
 #include "../common/common.h"
+#include <stdio.h>
 
-void delta_e(fixed_t target_e, fixed_t e_bram [ELEMENTS], fixed_t * max_delta_e, uint32_t * max_delta_e_idx) {
+using namespace std;
+
+void delta_e(fixed_t target_e, fixed_t e_bram [ELEMENTS], fixed_t & max_delta_e, uint32_t & max_delta_e_idx) {
 	//#pragma HLS DATAFLOW
     uint32_t i;
     fixed_t delta_e;
+
+    max_delta_e = 0;
 
     for (i = 0; i < ELEMENTS; i++) {
     //#pragma HLS PIPELINE
@@ -17,9 +22,9 @@ void delta_e(fixed_t target_e, fixed_t e_bram [ELEMENTS], fixed_t * max_delta_e,
         	delta_e = delta_e * -1;
         }
 
-        if (delta_e > *max_delta_e) {
-            *max_delta_e = delta_e;
-            *max_delta_e_idx = i;
+        if (delta_e > max_delta_e) {
+            max_delta_e = delta_e;
+            max_delta_e_idx = i;
         }
     }
 }

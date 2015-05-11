@@ -27,7 +27,7 @@ static void init_device(data_t data [ELEMENTS], hls::stream<transmit_t> & in,
         }
 
         recv(y[i], in);
-        e_bram[i] = y[i] ? -1 : 1;
+        e_bram[i] = y[i] ? -1 : 1; // note: e = -y
         alpha[i] = 0;
     }
 }
@@ -150,7 +150,6 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
         y2_delta_alpha2_product = 0;
         delta_b = 0;
         target_e = 0;
-        max_delta_e = 0;
 
         init_device(data, in, y, e_bram, alpha);
 
@@ -174,7 +173,7 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
 
     case COMMAND_GET_DELTA_E:
         // run the delta E pipeline
-        delta_e(target_e, e_bram, &max_delta_e, &max_delta_e_idx);
+        delta_e(target_e, e_bram, max_delta_e, max_delta_e_idx);
 
         // return the max delta E
         send(max_delta_e, out);
@@ -183,22 +182,15 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
 
     case COMMAND_GET_POINT:
         recv(j, in);
-
-        for (i = 0; i < DIMENSIONS; i++) {
-            send(data[j].dim[i], out);
-        }
+        send(data[j], out);
         break;
 
     case COMMAND_SET_POINT_0:
-        for (i = 0; i < DIMENSIONS; i++) {
-            recv(point0.dim[i], in);
-        }
+        recv(point0, in);
         break;
 
     case COMMAND_SET_POINT_1:
-        for (i = 0; i < DIMENSIONS; i++) {
-            recv(point1.dim[i], in);
-        }
+        recv(point1, in);
         break;
 
     case COMMAND_GET_E:

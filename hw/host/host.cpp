@@ -40,6 +40,10 @@ static bool take_step(data_t & point1, fixed_t & alpha1, bool y1, fixed_t err1,
     fixed_t b2;
     fixed_t temp; // TODO: debug
 
+    if (&point1 == &point2) {
+        return false;
+    }
+
     // compute n (eta)
     k11 = k(point1, point1);
     k12 = k(point1, point2);
@@ -71,8 +75,6 @@ static bool take_step(data_t & point1, fixed_t & alpha1, bool y1, fixed_t err1,
     // smo paper/book
     if (n > fixed_t(0)) {
         alpha2New = alpha2 + ((y2 ? 1 : -1)* (err1 - err2) / n);
-        cout << alpha2 << ",\t" << y1 << ",\t" << err1 << ",\t" << err2 << ",\t" << n << endl;
-
         if (alpha2New > high) {
             alpha2NewClipped = high;
         }
@@ -84,7 +86,7 @@ static bool take_step(data_t & point1, fixed_t & alpha1, bool y1, fixed_t err1,
         }
     }
     else {
-        f1 = (y1 ? 1 : -1) * (err1 + b) - (alpha1 * k11) - (s * alpha1 * k12);
+        f1 = (y1 ? 1 : -1) * (err1 + b) - (alpha1 * k11) - (s * alpha2 * k12);
         f2 = (y2 ? 1 : -1) * (err2 + b) - (s * alpha1 * k12) - (alpha2 * k22);
         l1 = alpha1 + s * (alpha2 - low);
         h1 = alpha1 + s * (alpha2 - high);
@@ -106,11 +108,9 @@ static bool take_step(data_t & point1, fixed_t & alpha1, bool y1, fixed_t err1,
             alpha2NewClipped = high;
         }
         else{
-            alpha2NewClipped = alpha1;
+            alpha2NewClipped = alpha2;
         }
     }
-
-    cout << n << ",\t" << low << ",\t" << high << ",\t" << alpha2New << ",\t" << alpha2NewClipped << endl;
 
     // check if alpha2 changes significantly
     // ABS macro cannot be used in fixed_t, explicitly coded instead
@@ -130,12 +130,12 @@ static bool take_step(data_t & point1, fixed_t & alpha1, bool y1, fixed_t err1,
     // compute the new b. some more equations copied from the smo
     // paper/book
     b1 = err1
-        + (y1 * (alpha1New - alpha1) * k11)
-        + (y2 * (alpha2NewClipped - alpha2) * k12)
+        + ((y1 ? 1 : -1) * (alpha1New - alpha1) * k11)
+        + ((y2 ? 1 : -1) * (alpha2NewClipped - alpha2) * k12)
         + b;
     b2 = err2
-        + (y1 * (alpha1New - alpha1) * k12)
-        + (y2 * (alpha2NewClipped - alpha2) * k22)
+        + ((y1 ? 1 : -1) * (alpha1New - alpha1) * k12)
+        + ((y2 ? 1 : -1) * (alpha2NewClipped - alpha2) * k22)
         + b;
 
     if ((alpha1New > 0) && (alpha1New < C)){
@@ -167,6 +167,7 @@ void host(data_t data [ELEMENTS], fixed_t alpha [ELEMENTS], fixed_t & b,
         bool y [ELEMENTS], hls::stream<transmit_t> & in,
         hls::stream<transmit_t> & out) {
     bool changed;
+    bool tempChanged;
     bool point1_set;
     uint32_t i, j;
     uint32_t kkt_violators = 0;
@@ -207,6 +208,10 @@ void host(data_t data [ELEMENTS], fixed_t alpha [ELEMENTS], fixed_t & b,
         send(data[i], out);
         send(y[i], out);
     }
+    for (i = 0; i < ELEMENTS; i++) {
+        alpha[i] = 0;
+    }
+    b = 0;
     callDevice(in, out);
 
     // main loop of SMO
@@ -305,11 +310,14 @@ void host(data_t data [ELEMENTS], fixed_t alpha [ELEMENTS], fixed_t & b,
             alpha1_old = alpha1;
             alpha2_old = alpha2;
             b_old = b;
-            changed |= take_step(point2, alpha2, y[point2_idx], err2,
+            tempChanged = false;
+            tempChanged |= take_step(point2, alpha2, y[point2_idx], err2,
                     point1, alpha1, y[point1_idx], err1, b);
 
+            cout << alpha2 << "," << alpha1 << "," << b << endl;
+
             // Second point heuristic: Hierarchy #1 - loop over all non-bound alphas
-            if (!changed) {
+            if (!tempChanged) {
             	start_idx_heu1 = rand() % ELEMENTS;
             	for (i = start_idx_heu1; i < (start_idx_heu1 + ELEMENTS); i++) {
             		point2_idx = i % ELEMENTS;
@@ -341,18 +349,18 @@ void host(data_t data [ELEMENTS], fixed_t alpha [ELEMENTS], fixed_t & b,
                     alpha2_old = alpha2;
                     b_old = b;
                     if ((alpha2 != 0) && (alpha2 != C)) {
-                    	changed |= take_step(point2, alpha2, y[point2_idx], err2,
+                        tempChanged |= take_step(point2, alpha2, y[point2_idx], err2,
                     	        point1, alpha1, y[point1_idx], err1, b);
                     }
-                    if (changed) {
+                    if (tempChanged) {
                     	break;
                     }
                 }
             }
 
             // Second point heuristic: Hierarchy #2 - loop entire training set
-            if (!changed) {
-            	start_idx_heu2 = 70;
+            if (!tempChanged) {
+            	start_idx_heu2 = rand() % ELEMENTS;
             	for (i = start_idx_heu2; i < (start_idx_heu2 + ELEMENTS); i++) {
             		point2_idx = i % ELEMENTS;
 
@@ -382,10 +390,10 @@ void host(data_t data [ELEMENTS], fixed_t alpha [ELEMENTS], fixed_t & b,
                     // evaluate new alpha2 for heuristic #2
                     alpha2_old = alpha2;
                     b_old = b;
-                    changed |= take_step(point2, alpha2, y[point2_idx], err2,
+                    tempChanged |= take_step(point2, alpha2, y[point2_idx], err2,
                     	                point1, alpha1, y[point1_idx], err1, b);
 
-                    if (changed) {
+                    if (tempChanged) {
                     	break;
                     }
                 }
@@ -421,6 +429,8 @@ void host(data_t data [ELEMENTS], fixed_t alpha [ELEMENTS], fixed_t & b,
             send(COMMAND_SET_DELTA_B, out);
             send(delta_b, out);
             callDevice(in, out);
+
+            changed |= tempChanged;
         }
     } while(changed);
 

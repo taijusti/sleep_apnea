@@ -11,7 +11,7 @@
     #define ELEMENTS (128)
     #define DIMENSIONS (4)
 	#define C (5)
-	#define ERROR (0.1)
+	#define ERROR (0.001)
     #define TOLERANCE (0.001)
     #define EPSILON (0.001)
 
@@ -39,7 +39,7 @@
 		#include <hls_stream.h>
 		#include <ap_fixed.h>
 
-        typedef ap_fixed<32, 16> fixed_t;
+        //typedef ap_fixed<32, 4> fixed_t;
 
 		typedef union {
 			uint32_t ui;
@@ -49,19 +49,21 @@
 		} transmit_t;
 
         typedef struct {
-        	fixed_t dim [DIMENSIONS];
+            float dim [DIMENSIONS];
         } data_t;
 
-        fixed_t dotProduct(data_t * point1, data_t * point2);
+        float dotProduct(data_t * point1, data_t * point2);
         void send(int32_t i, hls::stream<transmit_t> &fifo);
         void send(uint32_t ui, hls::stream<transmit_t> &fifo);
         void send(bool y, hls::stream<transmit_t> &fifo);
-        void send(fixed_t &f, hls::stream<transmit_t> &fifo);
+        //void send(fixed_t &f, hls::stream<transmit_t> &fifo);
+        void send(float f, hls::stream<transmit_t> &fifo);
         void send(data_t &f, hls::stream<transmit_t> &fifo);
         void recv(int32_t &i, hls::stream<transmit_t> &fifo);
         void recv(uint32_t &ui, hls::stream<transmit_t> &fifo);
         void recv(bool &y, hls::stream<transmit_t> &fifo);
-        void recv(fixed_t &f, hls::stream<transmit_t> &fifo);
+        //void recv(fixed_t &f, hls::stream<transmit_t> &fifo);
+        void recv(float &f, hls::stream<transmit_t> &fifo);
         void recv(data_t &f, hls::stream<transmit_t> &fifo);
 
     #else

@@ -5,7 +5,7 @@
 #include <hls_stream.h>
 #include <stdint.h>
 
-static bool isKKT(fixed_t alpha, bool y, fixed_t e) {
+static bool isKKT(float alpha, bool y, float e) {
     //#pragma HLS PIPELINE
     //#pragma HLS INLINE
 
@@ -23,8 +23,8 @@ static bool isKKT(fixed_t alpha, bool y, fixed_t e) {
     }
 }
 
-void kkt(hls::stream<fixed_t> & alpha, hls::stream<bool> & y,
-        hls::stream<fixed_t> & e_fifo, hls::stream<uint32_t> & kkt_bram,
+void kkt(hls::stream<float> & alpha, hls::stream<bool> & y,
+        hls::stream<float> & e_fifo, hls::stream<uint32_t> & kkt_bram,
         uint32_t & kkt_violators) {
     //#pragma HLS INLINE
 

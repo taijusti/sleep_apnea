@@ -6,10 +6,10 @@
 
 using namespace std;
 
-void delta_e(fixed_t target_e, fixed_t e_bram [ELEMENTS], fixed_t & max_delta_e, uint32_t & max_delta_e_idx) {
+void delta_e(float target_e, float e_bram [ELEMENTS], float & max_delta_e, uint32_t & max_delta_e_idx) {
 	//#pragma HLS DATAFLOW
     uint32_t i;
-    fixed_t delta_e;
+    float delta_e;
 
     max_delta_e = -1;
 
@@ -18,7 +18,7 @@ void delta_e(fixed_t target_e, fixed_t e_bram [ELEMENTS], fixed_t & max_delta_e,
     //#pragma HLS UNROLL factor=16
 
         delta_e = target_e - e_bram[i]; // TODO: cleanup
-        if (delta_e < fixed_t(0)) {
+        if (delta_e < 0) {
         	delta_e = delta_e * -1;
         }
 

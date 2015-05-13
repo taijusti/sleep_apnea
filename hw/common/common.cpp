@@ -2,11 +2,11 @@
 
 #include "../common/common.h"
 
-fixed_t dotProduct(data_t * point1, data_t * point2) {
+float dotProduct(data_t * point1, data_t * point2) {
     //#pragma HLS PIPELINE
 
     uint16_t i;
-    fixed_t sum = 0;
+    float sum = 0;
 
     for (i = 0; i < DIMENSIONS; i++) {
     //#pragma HLS UNROLL
@@ -33,12 +33,18 @@ void send(int32_t i, hls::stream<transmit_t> &fifo) {
 	temp.i = i;
 	fifo.write(temp);
 }
-
+/*
 void send(fixed_t &f, hls::stream<transmit_t> &fifo) {
 	transmit_t temp;
 
 	temp.ui = f.range(31, 0);
 	fifo.write(temp);
+}
+*/
+void send(float f, hls::stream<transmit_t> &fifo) {
+    transmit_t temp;
+    temp.f = f;
+    fifo.write(temp);
 }
 
 void send(data_t & point, hls::stream<transmit_t> & fifo) {
@@ -60,9 +66,13 @@ void recv(uint32_t &ui, hls::stream<transmit_t> &fifo) {
 void recv(int32_t &i, hls::stream<transmit_t> &fifo) {
 	i = fifo.read().i;
 }
-
+/*
 void recv(fixed_t &f, hls::stream<transmit_t> &fifo) {
 	f(31, 0) = fifo.read().ui;
+}
+*/
+void recv(float &f, hls::stream<transmit_t> &fifo) {
+    f = fifo.read().f;
 }
 
 void recv(data_t & point, hls::stream<transmit_t> & fifo) {

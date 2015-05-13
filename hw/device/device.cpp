@@ -14,7 +14,7 @@
 using namespace std;
 
 static void init_device(data_t data [ELEMENTS], hls::stream<transmit_t> & in,
-        bool y [ELEMENTS], fixed_t e_bram [ELEMENTS], fixed_t alpha [ELEMENTS]) {
+        bool y [ELEMENTS], float e_bram [ELEMENTS], float alpha [ELEMENTS]) {
     //#pragma HLS INLINE
     //#pragma HLS PIPELINE
 
@@ -33,19 +33,19 @@ static void init_device(data_t data [ELEMENTS], hls::stream<transmit_t> & in,
 }
 
 static void kkt_pipeline (data_t & point0, data_t & point1, hls::stream<data_t> & data_fifo,
-        hls::stream<fixed_t> & e_bram_in_fifo, hls::stream<fixed_t> & e_bram_out_fifo,
-        hls::stream<fixed_t> & alpha_fifo, hls::stream<bool> & y_fifo,
+        hls::stream<float> & e_bram_in_fifo, hls::stream<float> & e_bram_out_fifo,
+        hls::stream<float> & alpha_fifo, hls::stream<bool> & y_fifo,
         hls::stream<uint32_t> & kkt_bram_fifo, uint32_t & kkt_violators,
-        fixed_t y1_delta_alpha1_product, fixed_t y2_delta_alpha2_product,
-        fixed_t delta_b) {
+        float y1_delta_alpha1_product, float y2_delta_alpha2_product,
+        float delta_b) {
     //#pragma HLS INLINE
     //#pragma HLS PIPELINE
 
-    hls::stream<fixed_t> k1_fifo;
+    hls::stream<float> k1_fifo;
     #pragma HLS STREAM variable=k1_fifo depth=64
-    hls::stream<fixed_t> k2_fifo;
+    hls::stream<float> k2_fifo;
     #pragma HLS STREAM variable=k2_fifo depth=64
-    hls::stream<fixed_t> e_fifo;
+    hls::stream<float> e_fifo;
     #pragma HLS STREAM variable=e_fifo depth=64
 
      // actual pipeline
@@ -56,16 +56,16 @@ static void kkt_pipeline (data_t & point0, data_t & point1, hls::stream<data_t> 
 }
 
 static void kkt_pipeline_wrapper (data_t & point0, data_t & point1, data_t data [ELEMENTS],
-        fixed_t e_bram[ELEMENTS], fixed_t alpha [ELEMENTS], bool y [ELEMENTS],
+        float e_bram[ELEMENTS], float alpha [ELEMENTS], bool y [ELEMENTS],
         hls::stream<uint32_t> & kkt_fifo, uint32_t & kkt_violators,
-        fixed_t y1_delta_alpha1_product, fixed_t y2_delta_alpha2_product,
-        fixed_t delta_b) {
+        float y1_delta_alpha1_product, float y2_delta_alpha2_product,
+        float delta_b) {
 
     hls::stream<data_t> data_fifo[PARTITIONS];
     hls::stream<bool> y_fifo[PARTITIONS];
-    hls::stream<fixed_t> alpha_fifo [PARTITIONS];
-    hls::stream<fixed_t> e_bram_in_fifo [PARTITIONS];
-    hls::stream<fixed_t> e_bram_out_fifo [PARTITIONS];
+    hls::stream<float> alpha_fifo [PARTITIONS];
+    hls::stream<float> e_bram_in_fifo [PARTITIONS];
+    hls::stream<float> e_bram_out_fifo [PARTITIONS];
     hls::stream<uint32_t> local_kkt_bram_fifo [PARTITIONS];
     uint32_t local_kkt_violators [PARTITIONS];
     uint32_t i, j;
@@ -119,16 +119,16 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
     // internal buffers/memory/fifos
     static data_t data [ELEMENTS];
     #pragma HLS ARRAY_PARTITION variable=data cyclic factor=4 dim=2
-    static fixed_t alpha[ELEMENTS];
+    static float alpha[ELEMENTS];
     #pragma HLS ARRAY_PARTITION variable=alpha cyclic factor=8 dim=1
-    static fixed_t e_bram[ELEMENTS];
+    static float e_bram[ELEMENTS];
     #pragma HLS ARRAY_PARTITION variable=e_bram cyclic factor=8 dim=1
     static bool y[ELEMENTS];
     #pragma HLS ARRAY_PARTITION variable=y cyclic factor=8 dim=1
-    static fixed_t y1_delta_alpha1_product;
-    static fixed_t y2_delta_alpha2_product;
-    static fixed_t delta_b;
-    static fixed_t target_e;
+    static float y1_delta_alpha1_product;
+    static float y2_delta_alpha2_product;
+    static float delta_b;
+    static float target_e;
     static data_t point0;
     #pragma HLS ARRAY_PARTITION variable=point0.dim complete dim=1
     static data_t point1;
@@ -136,7 +136,7 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
 
     hls::stream<uint32_t> kkt_fifo;
     uint32_t kkt_violators;
-    fixed_t max_delta_e;
+    float max_delta_e;
     uint32_t max_delta_e_idx;
     uint32_t command;
 
@@ -196,6 +196,7 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
     case COMMAND_GET_E:
         recv(i, in);
         send(e_bram[i], out);
+
         break;
 
     case COMMAND_SET_E:

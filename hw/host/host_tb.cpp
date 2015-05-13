@@ -22,7 +22,7 @@ static float kernel(data_t & a, data_t & b) {
         sum = sum + diff*diff;
     }
 
-    return exp(-sum);
+    return expf(-sum);
 }
 
 static float classify(float alpha [ELEMENTS], float b, data_t training_data [ELEMENTS],
@@ -40,13 +40,13 @@ static float classify(float alpha [ELEMENTS], float b, data_t training_data [ELE
 static bool isKKT(float alpha, bool y, float e) {
     float yeProduct = y ? e : -e;
     if (0 == alpha) {
-        return yeProduct >= ( -0.001);
+        return yeProduct >= (-ERROR);
     }
     else if (C == alpha) {
-        return yeProduct <= ( 0.001);
+        return yeProduct <= (ERROR);
     }
     else {
-        return yeProduct < ( 0.001) && yeProduct > ( -0.001);
+        return yeProduct < (ERROR) && yeProduct > (-ERROR);
     }
 }
 
@@ -63,12 +63,7 @@ bool takeStep(data_t & point1, data_t & point2, float err1, float err2,
     float alpha2New;
     int s = y1 == y2 ? 1 : -1;
 
-    for (i = 0; i < DIMENSIONS; i++) {
-        if (point1.dim[i] != point2.dim[i]) {
-            break;
-        }
-    }
-    if (i == DIMENSIONS) {
+    if (&point1 == &point2) {
         return false;
     }
 
@@ -129,7 +124,7 @@ bool takeStep(data_t & point1, data_t & point2, float err1, float err2,
     // I think it is to check if alpha changed
     // significantly or not. Ibrahim
     if (ABS(alpha2NewClipped - alpha2)
-        < 0.001 * (alpha2NewClipped + alpha2 + 0.001))
+        < EPSILON * (alpha2NewClipped + alpha2 + EPSILON))
     {
         return false;
     }
@@ -268,14 +263,67 @@ int main(void) {
     data_t data [ELEMENTS];
     bool y [ELEMENTS];
     float alpha_expected [ELEMENTS];
-    fixed_t alpha_actual [ELEMENTS];
+    float alpha_actual [ELEMENTS];
     float b_expected;
-    fixed_t b_actual;
+    float b_actual = 0;
     uint32_t i;
     uint32_t j;
     hls::stream<transmit_t> in;
     hls::stream<transmit_t> out;
-    FILE * fp = fopen("/home/taijusti/Documents/github/sleep_apnea/sw/smo/svmguide1-t.txt", "r");
+    FILE * fp = fopen("/mnt/hdd/github/sleep_apnea/sw/smo/svmguide1-t.txt", "r");
+
+    // test take step
+    data_t point1;
+    data_t point2;
+    float err1;
+    float err2;
+    bool y1;
+    bool y2;
+    float alpha1_expected;
+    float alpha2_expected;
+    float alpha1_actual;
+    float alpha2_actual;
+    bool expected;
+    bool actual;
+
+    // test take step
+    for (i = 0; i < 10000000; i++) {
+        for (j = 0; j < DIMENSIONS; j++) {
+            point1.dim[j] = randFloat() * 10000;
+            point2.dim[j] = randFloat() * 10000;
+        }
+
+        err1 = randFloat() * 100000;
+        err2 = randFloat() * 100000;
+        y1 = randFloat() > 0.5;
+        y2 = randFloat() > 0.5;
+        alpha1_expected = alpha1_actual = randFloat() * 5;
+        alpha2_expected = alpha2_actual = randFloat() * 5;
+        b_expected = b_actual = randFloat() * 100000;
+
+        expected = takeStep(point1, point2, err1, err2,
+                y1, y2, alpha1_expected, alpha2_expected, b_expected);
+
+        actual = take_step(point1, alpha1_actual, y1, err1,
+                point2, alpha2_actual, y2, err2, b_actual);
+
+        if (expected != actual) {
+            printf("result mismatch!\n");
+            return 1;
+        }
+        if (ABS(alpha1_expected - alpha1_actual) > 0.0001) {
+            printf("alpha1 mismatch!\n");
+            return 1;
+        }
+        if (ABS(alpha2_expected - alpha2_actual) > 0.0001) {
+            printf("alpha2 mismatch!\n");
+            return 1;
+        }
+        if (ABS(b_expected - b_actual) > 0.0001) {
+            printf("b mismatch!\n");
+            return 1;
+        }
+    }
 
     // randomly generate training data
     for (i = 0; i < ELEMENTS; i++) {
@@ -299,17 +347,15 @@ int main(void) {
 
     // check if the returned alphas matches within some error
     for (i = 0; i < ELEMENTS; i++) {
-        cout << alpha_actual[i] << "," << alpha_expected[i] << endl;
-        if (!EQ_ERR(alpha_actual[i].to_float(), alpha_expected[i], ERROR)) {
-            printf("TEST FAILED! alpha mismatch!\n");
+        float expected_class = classify(alpha_expected, b_expected, data, y, data[i]);
+        float actual_class = classify(alpha_actual, b_actual, data, y, data[i]);
+        bool expected_pred = expected_class >= 0;
+        bool actual_pred = actual_class >= 0;
+
+        if (expected_pred != actual_pred) {
+            printf("TEST FAILED! prediction mismatch\n");
             return 1;
         }
-    }
-
-    // check if the returned b matches within some error
-    if (!EQ_ERR(b_expected, b_actual.to_float(), ERROR)) {
-        printf("TEST FAILED! b mismatch!\n");
-        return 1;
     }
 
     printf("TEST PASSED!\n");

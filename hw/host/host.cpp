@@ -18,7 +18,7 @@ using namespace std;
 #endif
 
 bool take_step(data_t & point1, float & alpha1, bool y1, float err1,
-        data_t & point2, float & alpha2, bool y2, float err2, float & b) {
+        data_t & point2, float & alpha2, bool y2, float err2, float & b,uint32_t point1_idx,uint32_t point2_idx) {
     float low;
     float high;
     float s;
@@ -149,11 +149,11 @@ bool take_step(data_t & point1, float & alpha1, bool y1, float err1,
     }
 
     // all the calculations were successful, update the values
-    //printf("\na1: %f a2: %f err1: %f err2: %f b: %f\n", alpha1 ,alpha2, err1, err2, b); // TODO: debug
+  //  printf("\n First: a1:%i, %f a2:%i, %f, err1: %f err2: %f b: %f\n",point1_idx, alpha1 ,point2_idx, alpha2, err1, err2, b); // TODO: debug
     alpha1 = alpha1New;
     alpha2 = alpha2NewClipped;
     b = bNew;
-    //printf("a1: %f a2: %f err1: %f err2: %f b: %f\n", alpha1 ,alpha2, err1, err2, b); // TODO: debug
+  //  printf("Second: a1: %i, %f a2:%i, %f err1: %f err2: %f b: %f\n\n",point1_idx, alpha1 ,point2_idx,alpha2, err1, err2, b); // TODO: debug
     return true;
 }
 
@@ -187,7 +187,7 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
         bool y [ELEMENTS], hls::stream<transmit_t> & in,
         hls::stream<transmit_t> & out) {
     bool changed;
-    bool tempChanged;
+    bool tempChanged=true;
     bool point2_set;
     uint32_t i, j;
     uint32_t kkt_violators = 0;
@@ -205,7 +205,7 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
     //bool y2;
     uint32_t point2_idx;
     float err2;
-
+    uint32_t kktViol[ELEMENTS];
     float max_delta_e;
     uint32_t max_delta_e_idx;
     float alpha1;
@@ -216,7 +216,7 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
     float b_old;
     float delta_b;
     float y_delta_alpha_product;
-
+    int iter=0;;
     uint32_t start_offset;
 
     // initialize device(s)
@@ -233,29 +233,47 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
     b = 0;
     callDevice(in, out);
 
+
+
+
+
+
+
+
+
     // main loop of SMO
     // note: we intentionally do not utilize the data and alpha arrays here.
     // there should only be one value of these, which should be distributed
     // amongst the client FPGAs.
+  //  int kk=0;
     do {
         changed = false;
 
         for (i = 0; i < ELEMENTS; i++) {
             // get device(s) to find KKT violators. choose the first KKT
             // violator as the first point and flush the FIFO
-            send(COMMAND_GET_KKT, out);
-            callDevice(in, out);
-            recv(kkt_violators, in);
-            if (kkt_violators == 0) {
-                changed = false;
-                break;
-            }
+        	if (tempChanged)
+        	{
+				send(COMMAND_GET_KKT, out);
+				callDevice(in, out);
+				recv(kkt_violators, in);
+				if (kkt_violators == 0) {
+					changed = false;
+					break;
+				}
 
+				for(j=0;j<kkt_violators;j++)
+				{
+
+					recv(kktViol[j],in);
+				}
+
+        	}
             point2_set = false;
             for (j = 0; j < kkt_violators; j++) {
                 uint32_t temp;
-                recv(temp, in);
-
+//                recv(temp, in);
+                temp=kktViol[j];
                 if (temp >= i && !point2_set) {
                     i = temp;
                     point2_idx = temp;
@@ -265,6 +283,7 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
 
             // no kkt violators, exit!
             if (!point2_set) {
+            	tempChanged = false;
                 break;
             }
 
@@ -293,10 +312,10 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
 
             tempChanged = false;
             tempChanged |= take_step(point1, alpha1, y[point1_idx], err1,
-                                    point2, alpha2, y[point2_idx], err2, b);
+                                    point2, alpha2, y[point2_idx], err2, b,point1_idx,point2_idx);
 
             // Second point heuristic: Hierarchy #1 - loop over all non-bound alphas
-            j = start_offset = rand() % ELEMENTS;
+            j = start_offset = 0;//rand() % ELEMENTS;
             while (!tempChanged && j < (start_offset + ELEMENTS)) {
                 point1_idx = j % ELEMENTS;
                 getPoint(point1_idx, point1, alpha1, err1, in, out);
@@ -304,14 +323,14 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
                 if (alpha1 != 0 && alpha1 != C) {
                     alpha1_old = alpha1;
                     tempChanged |= take_step(point1, alpha1, y[point1_idx], err1,
-                                             point2, alpha2, y[point2_idx], err2, b);
+                                             point2, alpha2, y[point2_idx], err2, b,point1_idx,point2_idx);
                 }
 
                 j++;
             }
 
             // Second point heuristic: Hierarchy #1 - loop over all non-bound alphas
-            j = start_offset = rand() % ELEMENTS;
+            j = start_offset =0;// rand() % ELEMENTS;
             while (!tempChanged && j < (start_offset + ELEMENTS)) {
                 point1_idx = j % ELEMENTS;
                 getPoint(point1_idx, point1, alpha1, err1, in, out);
@@ -319,7 +338,7 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
                 if (alpha1 == 0 && alpha1 == C) {
                     alpha1_old = alpha1;
                     tempChanged |= take_step(point1, alpha1, y[point1_idx], err1,
-                                           point2, alpha2, y[point2_idx], err2, b);
+                                           point2, alpha2, y[point2_idx], err2, b,point1_idx,point2_idx);
                 }
 
                 j++;
@@ -371,8 +390,10 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
 
             changed |= tempChanged;
         }
-    } while(changed);
+        iter++;
 
+    } while(changed); //
+   // printf("iter %i",iter);
     // get the results
     // TODO: overwrite when we figure out how the host FPGA is going
     // to return the classifier

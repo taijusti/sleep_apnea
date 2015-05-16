@@ -315,7 +315,7 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
                                     point2, alpha2, y[point2_idx], err2, b,point1_idx,point2_idx);
 
             // Second point heuristic: Hierarchy #1 - loop over all non-bound alphas
-            j = start_offset = 0;//rand() % ELEMENTS;
+            j = start_offset = rand() % ELEMENTS;
             while (!tempChanged && j < (start_offset + ELEMENTS)) {
                 point1_idx = j % ELEMENTS;
                 getPoint(point1_idx, point1, alpha1, err1, in, out);
@@ -330,7 +330,7 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
             }
 
             // Second point heuristic: Hierarchy #1 - loop over all non-bound alphas
-            j = start_offset =0;// rand() % ELEMENTS;
+            j = start_offset = rand() % ELEMENTS;
             while (!tempChanged && j < (start_offset + ELEMENTS)) {
                 point1_idx = j % ELEMENTS;
                 getPoint(point1_idx, point1, alpha1, err1, in, out);

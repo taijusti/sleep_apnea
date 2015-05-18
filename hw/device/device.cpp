@@ -15,10 +15,11 @@ using namespace std;
 
 static void init_device(data_t data [ELEMENTS], hls::stream<transmit_t> & in,
         bool y [ELEMENTS], float e_bram [ELEMENTS], float alpha [ELEMENTS]) {
-    //#pragma HLS INLINE
-    //#pragma HLS PIPELINE
+    #pragma HLS INLINE
+    #pragma HLS PIPELINE
 
-    uint32_t i, j;
+    uint32_t i;
+    uint32_t j;
 
     // initialize the BRAMs
     for (i = 0; i < ELEMENTS; i++) {
@@ -38,8 +39,8 @@ static void kkt_pipeline (data_t & point0, data_t & point1, hls::stream<data_t> 
         hls::stream<uint32_t> & kkt_bram_fifo, uint32_t & kkt_violators,
         float y1_delta_alpha1_product, float y2_delta_alpha2_product,
         float delta_b) {
-    //#pragma HLS INLINE
-    //#pragma HLS PIPELINE
+    #pragma HLS INLINE
+    #pragma HLS PIPELINE
 
     hls::stream<float> k1_fifo;
     #pragma HLS STREAM variable=k1_fifo depth=64
@@ -114,9 +115,8 @@ static void kkt_pipeline_wrapper (data_t & point0, data_t & point1, data_t data 
 }
 
 void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
-    unsigned int i, j;
-
-    // internal buffers/memory/fifos
+    unsigned int i;
+    unsigned int j;
     static data_t data [ELEMENTS];
     #pragma HLS ARRAY_PARTITION variable=data cyclic factor=4 dim=2
     static float alpha[ELEMENTS];
@@ -133,7 +133,6 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
     #pragma HLS ARRAY_PARTITION variable=point0.dim complete dim=1
     static data_t point1;
     #pragma HLS ARRAY_PARTITION variable=point1.dim complete dim=1
-
     hls::stream<uint32_t> kkt_fifo;
     uint32_t kkt_violators;
     float max_delta_e;
@@ -166,8 +165,7 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
         send(kkt_violators, out);
 
         for (i = 0; i < kkt_violators; i++) {
-            uint32_t temp = kkt_fifo.read(); // TODO: for debug
-            send(temp, out);
+            send(kkt_fifo.read(), out);
         }
         break;
 

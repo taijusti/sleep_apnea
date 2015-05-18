@@ -50,7 +50,7 @@ static bool isKKT(float alpha, bool y, float e) {
     }
 }
 
-bool takeStep(data_t & point1, data_t & point2, float err1, float err2,
+static bool takeStep(data_t & point1, data_t & point2, float err1, float err2,
         bool y1, bool y2, float & alpha1, float & alpha2, float & b) {
 
     float k11, k22, k12, n;
@@ -270,7 +270,7 @@ int main(void) {
     uint32_t j;
     hls::stream<transmit_t> in;
     hls::stream<transmit_t> out;
-    FILE * fp = fopen("/mnt/hdd/github/sleep_apnea/sw/smo/svmguide1-t.txt", "r");
+    FILE * fp = fopen("/home/taijusti/Documents/github/sleep_apnea/hw/host/svmguide1-t.txt", "r");
 
     // test take step
     data_t point1;
@@ -305,7 +305,7 @@ int main(void) {
                 y1, y2, alpha1_expected, alpha2_expected, b_expected);
 
         actual = take_step(point1, alpha1_actual, y1, err1,
-                point2, alpha2_actual, y2, err2, b_actual);
+                point2, alpha2_actual, y2, err2, b_actual, 0, 1);
 
         if (expected != actual) {
             printf("result mismatch!\n");
@@ -353,7 +353,7 @@ int main(void) {
         bool actual_pred = actual_class >= 0;
 
         if (expected_pred != actual_pred) {
-            printf("TEST FAILED! prediction mismatch\n");
+            printf("TEST FAILED! prediction mismatch %d %f %f\n", i, expected_class, actual_class);
             return 1;
         }
     }

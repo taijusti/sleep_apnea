@@ -6,8 +6,8 @@
 #include <stdint.h>
 
 static bool isKKT(float alpha, bool y, float e) {
-    //#pragma HLS PIPELINE
-    //#pragma HLS INLINE
+    #pragma HLS PIPELINE
+    #pragma HLS INLINE
 
     float u = (y ? 1 : -1) + e;
     float yuProduct =  y ? u : -u;
@@ -26,14 +26,14 @@ static bool isKKT(float alpha, bool y, float e) {
 void kkt(hls::stream<float> & alpha, hls::stream<bool> & y,
         hls::stream<float> & e_fifo, hls::stream<uint32_t> & kkt_bram,
         uint32_t & kkt_violators) {
-    //#pragma HLS INLINE
+    #pragma HLS INLINE
 
     uint32_t i;
     uint32_t violator_ctr = 0;
 
     // find and record KKT violators
     for (i = 0; i < PARTITION_ELEMENTS; i++) {
-    //#pragma HLS PIPELINE
+    #pragma HLS PIPELINE
 
         if (!isKKT(alpha.read(), y.read(), e_fifo.read())) {
             kkt_bram.write(i);

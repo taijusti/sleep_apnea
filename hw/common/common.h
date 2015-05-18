@@ -4,6 +4,7 @@
 #define COMMON_H
 
     #define FULL_INTEG
+    //#define C_SIM
 
     #define ABS(a) ((a) < 0 ? -(a) : (a))
     #define MAX(a,b) ((a) > (b) ? (a) : (b))
@@ -56,13 +57,11 @@
         void send(int32_t i, hls::stream<transmit_t> &fifo);
         void send(uint32_t ui, hls::stream<transmit_t> &fifo);
         void send(bool y, hls::stream<transmit_t> &fifo);
-        //void send(fixed_t &f, hls::stream<transmit_t> &fifo);
         void send(float f, hls::stream<transmit_t> &fifo);
         void send(data_t &f, hls::stream<transmit_t> &fifo);
         void recv(int32_t &i, hls::stream<transmit_t> &fifo);
         void recv(uint32_t &ui, hls::stream<transmit_t> &fifo);
         void recv(bool &y, hls::stream<transmit_t> &fifo);
-        //void recv(fixed_t &f, hls::stream<transmit_t> &fifo);
         void recv(float &f, hls::stream<transmit_t> &fifo);
         void recv(data_t &f, hls::stream<transmit_t> &fifo);
 

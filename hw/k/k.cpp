@@ -6,8 +6,8 @@
 using namespace std;
 
 static float two_norm(data_t & point0, data_t & point1) {
-	//#pragma HLS PIPELINE
-	//#pragma HLS INLINE
+	#pragma HLS PIPELINE
+	#pragma HLS INLINE
 
     float temp = 0;
 	float difference;
@@ -23,19 +23,14 @@ static float two_norm(data_t & point0, data_t & point1) {
 }
 
 static float exponential(float & x) {
-	//#pragma HLS PIPELINE
-	//#pragma HLS INLINE
-
-	//float temp = x.to_float(); // TODO: for debug
-	//temp = expf((-temp) * inverse_sigma_squared);
-	float temp = expf(-x);
-	return temp;
+	#pragma HLS PIPELINE
+	#pragma HLS INLINE
+	return expf(-x);
 }
 
 static float k_engine_help(data_t & point0, data_t & point1) {
-#pragma HLS INLINE
-	//#pragma HLS PIPELINE
-	//#pragma HLS INLINE
+	#pragma HLS PIPELINE
+	#pragma HLS INLINE
 
     float temp = two_norm(point0, point1);
     return exponential(temp);
@@ -49,8 +44,7 @@ float k (data_t & point0, data_t & point1) {
 // should be throughput optimized
 void k (data_t & point0, data_t & point1, hls::stream<data_t> & data,
 		hls::stream<float> & k0, hls::stream<float> & k1) {
-	//#pragma HLS INLINE
-	//#pragma HLS DATAFLOW
+	#pragma HLS INLINE
 
     int i;
 

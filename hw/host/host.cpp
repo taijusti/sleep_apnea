@@ -11,14 +11,19 @@
 
 using namespace std;
 
-#define DEBUG
-
-#ifdef DEBUG
+#ifdef C_SIM
 #include "../device/device_inc.h"
 #endif
 
+#ifdef C_SIM
 bool take_step(data_t & point1, float & alpha1, bool y1, float err1,
-        data_t & point2, float & alpha2, bool y2, float err2, float & b) {
+        data_t & point2, float & alpha2, bool y2, float err2, float & b,
+        uint32_t idx1, uint32_t idx2) {
+#else
+static bool take_step(data_t & point1, float & alpha1, bool y1, float err1,
+        data_t & point2, float & alpha2, bool y2, float err2, float & b,
+        uint32_t idx1, uint32_t idx2) {
+#endif
     float low;
     float high;
     float s;
@@ -38,9 +43,11 @@ bool take_step(data_t & point1, float & alpha1, bool y1, float err1,
     float bNew;
     float b1;
     float b2;
-    float temp; // TODO: debug
 
-    if (&point1 == &point2) {
+    // NOTE: we use the indices to verify that the points aren't the same
+    // rather than using &point1 == &point2 because HLS doesn't support
+    // pointer comparison
+    if (idx1 == idx2) {
         return false;
     }
 
@@ -53,20 +60,15 @@ bool take_step(data_t & point1, float & alpha1, bool y1, float err1,
     // compute high and low boundaries
     if (y1 == y2) {
         s = 1;
-        temp = alpha1 + alpha2 - C ;
-        low = MAX(0, temp);
-        temp = alpha1 + alpha2;
-        high = MIN(C, temp);
+        low = MAX(0, alpha1 + alpha2 - C);
+        high = MIN(C, alpha1 + alpha2);
     }
     else {
         s = -1;
-        temp = alpha2 - alpha1;
-        low = MAX(0, temp);
-        temp = C + alpha2 - alpha1;
-        high = MIN(C, temp);
+        low = MAX(0, alpha2 - alpha1);
+        high = MIN(C, C + alpha2 - alpha1);
     }
 
-    // TODO: is this right?
     if (low == high) {
         return false;
     }
@@ -149,23 +151,20 @@ bool take_step(data_t & point1, float & alpha1, bool y1, float err1,
     }
 
     // all the calculations were successful, update the values
-    //printf("\na1: %f a2: %f err1: %f err2: %f b: %f\n", alpha1 ,alpha2, err1, err2, b); // TODO: debug
     alpha1 = alpha1New;
     alpha2 = alpha2NewClipped;
     b = bNew;
-    //printf("a1: %f a2: %f err1: %f err2: %f b: %f\n", alpha1 ,alpha2, err1, err2, b); // TODO: debug
     return true;
 }
 
 static void callDevice(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
-#ifdef DEBUG
+#ifdef C_SIM
     device(out, in);
 #endif
 }
 
 static void getPoint(uint32_t idx, data_t & point, float & alpha, float & err,
         hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
-    assert(idx < 128);
     send(COMMAND_GET_POINT, out);
     send(idx, out);
     callDevice(in, out);
@@ -182,30 +181,34 @@ static void getPoint(uint32_t idx, data_t & point, float & alpha, float & err,
     recv(alpha, in);
 }
 
-// TODO: figure out how host will get data, alpha, and b
 void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
         bool y [ELEMENTS], hls::stream<transmit_t> & in,
         hls::stream<transmit_t> & out) {
+    #pragma HLS INTERFACE ap_fifo depth=128 port=out
+    #pragma HLS INTERFACE ap_fifo depth=128 port=in
+    #pragma HLS INTERFACE s_axilite port=b bundle=axi_bus
+    #pragma HLS INTERFACE s_axilite port=data bundle=axi_bus
+    #pragma HLS INTERFACE s_axilite port=alpha bundle=axi_bus
+    #pragma HLS INTERFACE s_axilite port=y bundle=axi_bus
+
     bool changed;
-    bool tempChanged;
+    bool tempChanged=true;
     bool point2_set;
     uint32_t i, j;
     uint32_t kkt_violators = 0;
     uint32_t cur_kkt_violator = 0;
     uint32_t temp;
-
     data_t point1;
     #pragma HLS ARRAY_PARTITION variable=point1.dim complete dim=1
     //bool y1;
     uint32_t point1_idx;
     float err1;
-
     data_t point2;
     #pragma HLS ARRAY_PARTITION variable=point2.dim dim=1
     //bool y2;
     uint32_t point2_idx;
     float err2;
-
+    uint32_t kktViol[ELEMENTS];
     float max_delta_e;
     uint32_t max_delta_e_idx;
     float alpha1;
@@ -216,7 +219,7 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
     float b_old;
     float delta_b;
     float y_delta_alpha_product;
-
+    int iter=0;;
     uint32_t start_offset;
 
     // initialize device(s)
@@ -243,19 +246,27 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
         for (i = 0; i < ELEMENTS; i++) {
             // get device(s) to find KKT violators. choose the first KKT
             // violator as the first point and flush the FIFO
-            send(COMMAND_GET_KKT, out);
-            callDevice(in, out);
-            recv(kkt_violators, in);
-            if (kkt_violators == 0) {
-                changed = false;
-                break;
-            }
+        	if (tempChanged)
+        	{
+				send(COMMAND_GET_KKT, out);
+				callDevice(in, out);
+				recv(kkt_violators, in);
+				if (kkt_violators == 0) {
+					changed = false;
+					break;
+				}
 
+				for(j=0;j<kkt_violators;j++)
+				{
+
+					recv(kktViol[j],in);
+				}
+
+        	}
             point2_set = false;
             for (j = 0; j < kkt_violators; j++) {
                 uint32_t temp;
-                recv(temp, in);
-
+                temp=kktViol[j];
                 if (temp >= i && !point2_set) {
                     i = temp;
                     point2_idx = temp;
@@ -265,6 +276,7 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
 
             // no kkt violators, exit!
             if (!point2_set) {
+            	tempChanged = false;
                 break;
             }
 
@@ -293,10 +305,12 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
 
             tempChanged = false;
             tempChanged |= take_step(point1, alpha1, y[point1_idx], err1,
-                                    point2, alpha2, y[point2_idx], err2, b);
+                                    point2, alpha2, y[point2_idx], err2, b,
+                                    point1_idx, point2_idx);
 
             // Second point heuristic: Hierarchy #1 - loop over all non-bound alphas
-            j = start_offset = rand() % ELEMENTS;
+            //j = start_offset = rand() % ELEMENTS;
+            j = start_offset = 0;
             while (!tempChanged && j < (start_offset + ELEMENTS)) {
                 point1_idx = j % ELEMENTS;
                 getPoint(point1_idx, point1, alpha1, err1, in, out);
@@ -304,22 +318,25 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
                 if (alpha1 != 0 && alpha1 != C) {
                     alpha1_old = alpha1;
                     tempChanged |= take_step(point1, alpha1, y[point1_idx], err1,
-                                             point2, alpha2, y[point2_idx], err2, b);
+                                             point2, alpha2, y[point2_idx], err2, b,
+                                             point1_idx, point2_idx);
                 }
 
                 j++;
             }
 
             // Second point heuristic: Hierarchy #1 - loop over all non-bound alphas
-            j = start_offset = rand() % ELEMENTS;
+            //j = start_offset = rand() % ELEMENTS;
+            j = start_offset = 0;
             while (!tempChanged && j < (start_offset + ELEMENTS)) {
                 point1_idx = j % ELEMENTS;
                 getPoint(point1_idx, point1, alpha1, err1, in, out);
 
-                if (alpha1 == 0 && alpha1 == C) {
+                if (alpha1 == 0 || alpha1 == C) {
                     alpha1_old = alpha1;
                     tempChanged |= take_step(point1, alpha1, y[point1_idx], err1,
-                                           point2, alpha2, y[point2_idx], err2, b);
+                                           point2, alpha2, y[point2_idx], err2, b,
+                                           point1_idx, point2_idx);
                 }
 
                 j++;
@@ -371,6 +388,8 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
 
             changed |= tempChanged;
         }
+        iter++;
+
     } while(changed);
 
     // get the results

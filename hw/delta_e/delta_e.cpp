@@ -19,7 +19,7 @@ void delta_e(float target_e, float e_bram [ELEMENTS], float & max_delta_e, uint3
         delta_e = target_e - e_bram[i];
 
         if (ABS(delta_e) > max_delta_e) {
-            max_delta_e = delta_e;
+            max_delta_e = ABS(delta_e);
             max_delta_e_idx = i;
         }
     }

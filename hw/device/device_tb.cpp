@@ -20,15 +20,15 @@ static float randFloat(void) {
     return (float)rand() / RAND_MAX;
 }
 
-static fixed_t randFixed(void) {
+static float randFixed(void) {
 	float temp = randFloat();
 	return temp;
 }
 
-static fixed_t sw_k(data_t * point1, data_t * point2) {
+static float sw_k(data_t * point1, data_t * point2) {
      int i;
-     fixed_t difference;
-     fixed_t result = 0;
+     float difference;
+     float result = 0;
      float temp;
      for (i=0;i<DIMENSIONS;i++)
      {
@@ -37,20 +37,20 @@ static fixed_t sw_k(data_t * point1, data_t * point2) {
 
      }
 
-     result = result * fixed_t(-inverse_sigma_squared); // TODO: cleanup
-     temp = result;
+    // result = result * float(-inverse_sigma_squared); // TODO: cleanup
+     temp = -result;
      temp = expf(temp);
      return temp;
 }
 
-static fixed_t sw_e(fixed_t e_old, fixed_t k1, fixed_t k2, fixed_t y1_delta_alpha1_product,
-		fixed_t y2_delta_alpha2_product, fixed_t delta_b) {
+static float sw_e(float e_old, float k1, float k2, float y1_delta_alpha1_product,
+		float y2_delta_alpha2_product, float delta_b) {
     return e_old + (k1 * y1_delta_alpha1_product) + (k2 * y2_delta_alpha2_product) + delta_b;
 }
 
-static bool sw_kkt(fixed_t alpha, bool y, fixed_t e) {
-	fixed_t u = (y ? 1 : -1) + e;
-	fixed_t yuProduct = y ? 1 * u : (-1) * u;
+static bool sw_kkt(float alpha, bool y, float e) {
+	float u = (y ? 1 : -1) + e;
+	float yuProduct = y ? 1 * u : (-1) * u;
 
     if (0 == alpha) {
         return yuProduct >= (1 - ERROR);
@@ -68,24 +68,25 @@ int main(void) {
     data_t point1;
     data_t point2;
     bool y[ELEMENTS];
-    fixed_t y1_delta_alpha1_product;
-    fixed_t y2_delta_alpha2_product;
-    fixed_t delta_b;
-    fixed_t e_bram[ELEMENTS];
-    fixed_t expected_e_bram[ELEMENTS];
-    fixed_t max_delta_e;
-    fixed_t expected_max_delta_e;
+    float y1_delta_alpha1_product;
+    float y2_delta_alpha2_product;
+    float delta_b;
+    float e_bram[ELEMENTS];
+    float expected_e_bram[ELEMENTS];
+    float max_delta_e;
+    float expected_max_delta_e;
     uint32_t max_delta_e_idx;
     uint32_t expected_max_delta_e_idx;
-    fixed_t target_e;
-    fixed_t alpha[ELEMENTS];
-    fixed_t k1[ELEMENTS];
-    fixed_t k2[ELEMENTS];
+    float target_e;
+    float alpha[ELEMENTS];
+    float k1[ELEMENTS];
+    float k2[ELEMENTS];
     uint32_t kkt_bram[ELEMENTS];
     uint32_t expected_kkt_bram[ELEMENTS];
     uint32_t kkt_violators;
     uint32_t expected_kkt_violators;
     uint32_t i, j;
+   // data_t* ddr_model = (data_t*)malloc(ELEMENTS*sizeof(data_t));
     hls::stream<transmit_t> in;
     hls::stream<transmit_t> out;
 
@@ -138,7 +139,7 @@ int main(void) {
     expected_max_delta_e = 0;
     max_delta_e_idx = 0;
     for (i = 0; i < ELEMENTS; i++) {
-    	fixed_t delta_e = expected_e_bram[i] - target_e;
+    	float delta_e = expected_e_bram[i] - target_e;
     	if (delta_e < 0) {
     		delta_e *= -1;
     	}
@@ -254,9 +255,9 @@ int main(void) {
 
     // check if all the Es match up
     for (i = 0; i < ELEMENTS; i++) {
-        fixed_t lower = expected_e_bram[i] - fixed_t(TEST_ERROR);
-        fixed_t upper = expected_e_bram[i] + fixed_t(TEST_ERROR);
-        fixed_t temp = e_bram[i];
+        float lower = expected_e_bram[i] - float(TEST_ERROR);
+        float upper = expected_e_bram[i] + float(TEST_ERROR);
+        float temp = e_bram[i];
         if (!(e_bram[i] >= lower) || !(e_bram[i] <= upper)) {
             printf("TEST FAILED! E mismatch!\n");
             return 1;
@@ -264,8 +265,8 @@ int main(void) {
     }
 
     // check that the max delta e value matches with our expected max delta e
-    if (max_delta_e < (expected_max_delta_e - fixed_t(TEST_ERROR)) ||
-        max_delta_e > (expected_max_delta_e + fixed_t(TEST_ERROR))) {
+    if (max_delta_e < (expected_max_delta_e - float(TEST_ERROR)) ||
+        max_delta_e > (expected_max_delta_e + float(TEST_ERROR))) {
         printf("TEST FAILED! MAX_DELTA_E mismatch!\n");
         return 1;
     }

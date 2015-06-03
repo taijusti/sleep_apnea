@@ -35,6 +35,14 @@
     #define COMMAND_GET_ALPHA             (11)
     #define COMMAND_SET_ALPHA             (12)
 
+    // TODO: commands from here on down are for debug
+    #define COMMAND_GET_DELTA_B           (13)
+    #define COMMAND_GET_Y1_ALPHA1_PRODUCT (14)
+    #define COMMAND_GET_Y2_ALPHA2_PRODUCT (15)
+    #define COMMAND_GET_POINT_0           (16)
+    #define COMMAND_GET_POINT_1           (17)
+    #define COMMAND_GET_TARGET_E          (18)
+
     #ifdef FULL_INTEG
     	#include <stdint.h>
 		#include <hls_stream.h>

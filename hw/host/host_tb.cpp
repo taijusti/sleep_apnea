@@ -331,12 +331,20 @@ int main(void) {
         float temp1;
         float temp2;
         float temp3;
+        /*
         fscanf(fp, " %d %f %f %f %f",
                 &(y[i]), &temp0, &temp1, &temp2, &temp3);
         data[i].dim[0] = temp0;
         data[i].dim[1] = temp1;
         data[i].dim[2] = temp2;
         data[i].dim[3] = temp3;
+        */
+
+        data[i].dim[0] = randFloat();
+        data[i].dim[1] = randFloat();
+        data[i].dim[2] = randFloat();
+        data[i].dim[3] = randFloat();
+        y[i] = randFloat() > 0.5;
     }
 
     // try to train

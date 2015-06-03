@@ -8,6 +8,7 @@
 #include <hls_stream.h>
 #include <math.h>
 #include <stdio.h>
+#include <ap_utils.h>
 
 using namespace std;
 
@@ -165,6 +166,37 @@ static void callDevice(hls::stream<transmit_t> & in, hls::stream<transmit_t> & o
 
 static void getPoint(uint32_t idx, data_t & point, float & alpha, float & err,
         hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
+#pragma HLS INLINE off
+    transmit_t temp;
+    uint32_t i;
+
+    temp.ui = COMMAND_GET_POINT;
+    out.write(temp);
+    temp.ui = idx;
+    out.write(temp);
+    callDevice(in, out);
+    ap_wait();
+    for (i = 0; i < DIMENSIONS; i++) {
+        point.dim[i] = (in.read().i * 1.0) / 65536;
+    }
+
+    temp.ui = COMMAND_GET_E;
+    out.write(temp);
+    temp.ui = idx;
+    out.write(temp);
+    callDevice(in, out);
+    ap_wait();
+    err = (in.read().i * 1.0) / 65536;
+
+    temp.ui = COMMAND_GET_ALPHA;
+    out.write(temp);
+    temp.ui = idx;
+    out.write(temp);
+    callDevice(in, out);
+    ap_wait();
+    alpha = (in.read().i * 1.0) / 65536;
+
+    /*
     send(COMMAND_GET_POINT, out);
     send(idx, out);
     callDevice(in, out);
@@ -179,13 +211,72 @@ static void getPoint(uint32_t idx, data_t & point, float & alpha, float & err,
     send(idx, out);
     callDevice(in, out);
     recv(alpha, in);
+    */
+}
+
+static void getKkt(uint32_t & kkt_violators, uint32_t kktViol [ELEMENTS],
+        hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
+#pragma HLS INLINE off
+
+    uint32_t i;
+    transmit_t temp;
+
+    temp.ui = COMMAND_GET_KKT;
+    out.write(temp);
+    callDevice(in,out);
+    ap_wait();
+    in.read(temp);
+    kkt_violators = temp.ui;
+
+    if (kkt_violators == 0) {
+        return;
+    }
+
+    for (i = 0; i < kkt_violators; i++) {
+        in.read(temp);
+        kktViol[i] = temp.ui;
+    }
+}
+
+
+static void getMaxDeltaE(float err2, float & max_delta_e, uint32_t & point1_idx,
+        hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
+    transmit_t temp;
+    temp.ui = COMMAND_SET_E;
+    out.write(temp);
+    temp.i = (int32_t)(err2 * 65536);
+    out.write(temp);
+
+    temp.ui = COMMAND_GET_DELTA_E;
+    out.write(temp);
+
+    callDevice(in, out);
+    callDevice(in, out);
+    ap_wait();
+
+    max_delta_e = (in.read().i * 1.0) / 65536;
+    point1_idx = in.read().ui;
+
+    /*
+    // set the target E
+    send(COMMAND_SET_E, out);
+    send(err2, out);
+    callDevice(in, out);
+
+    // choose second point based on max delta E
+    send(COMMAND_GET_DELTA_E, out);
+    callDevice(in, out);
+    recv(max_delta_e, in);
+    recv(point1_idx, in);
+    */
 }
 
 void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
         bool y [ELEMENTS], hls::stream<transmit_t> & in,
         hls::stream<transmit_t> & out) {
-    #pragma HLS INTERFACE ap_fifo depth=128 port=out
-    #pragma HLS INTERFACE ap_fifo depth=128 port=in
+    #pragma HLS INTERFACE s_axilite port=return bundle=axi_bus
+    #pragma HLS INTERFACE axis depth=4096 port=out
+    #pragma HLS INTERFACE axis depth=4096 port=in
     #pragma HLS INTERFACE s_axilite port=b bundle=axi_bus
     #pragma HLS INTERFACE s_axilite port=data bundle=axi_bus
     #pragma HLS INTERFACE s_axilite port=alpha bundle=axi_bus
@@ -248,6 +339,12 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
             // violator as the first point and flush the FIFO
         	if (tempChanged)
         	{
+        	    getKkt(kkt_violators, kktViol, in, out);
+        	    if (kkt_violators == 0) {
+        	        changed = false;
+        	        break;
+        	    }
+        	    /*
 				send(COMMAND_GET_KKT, out);
 				callDevice(in, out);
 				recv(kkt_violators, in);
@@ -261,6 +358,7 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
 
 					recv(kktViol[j],in);
 				}
+				*/
 
         	}
             point2_set = false;
@@ -283,16 +381,8 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
             // get all data associated with the first point
             getPoint(point2_idx, point2, alpha2, err2, in, out);
 
-            // set the target E
-            send(COMMAND_SET_E, out);
-            send(err2, out);
-            callDevice(in, out);
-
-            // choose second point based on max delta E
-            send(COMMAND_GET_DELTA_E, out);
-            callDevice(in, out);
-            recv(max_delta_e, in);
-            recv(point1_idx, in);
+            // get max delta e
+            getMaxDeltaE(err2, max_delta_e, point1_idx, in, out);
 
             // get all data related to the second point
             getPoint(point1_idx, point1, alpha1, err1, in, out);
@@ -310,7 +400,7 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
 
             // Second point heuristic: Hierarchy #1 - loop over all non-bound alphas
             //j = start_offset = rand() % ELEMENTS;
-            j = start_offset = 0;
+            j = start_offset = i;
             while (!tempChanged && j < (start_offset + ELEMENTS)) {
                 point1_idx = j % ELEMENTS;
                 getPoint(point1_idx, point1, alpha1, err1, in, out);
@@ -327,7 +417,7 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
 
             // Second point heuristic: Hierarchy #1 - loop over all non-bound alphas
             //j = start_offset = rand() % ELEMENTS;
-            j = start_offset = 0;
+            j = start_offset = i;
             while (!tempChanged && j < (start_offset + ELEMENTS)) {
                 point1_idx = j % ELEMENTS;
                 getPoint(point1_idx, point1, alpha1, err1, in, out);
@@ -396,9 +486,20 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
     // TODO: overwrite when we figure out how the host FPGA is going
     // to return the classifier
     for (i = 0; i < ELEMENTS; i++) {
+        transmit_t temp;
+        temp.ui = COMMAND_GET_ALPHA;
+        out.write(temp);
+        temp.ui = i;
+        out.write(temp);
+        callDevice(in, out);
+        ap_wait();
+        alpha[i] = (in.read().i * 1.0) / 65536;
+
+        /*
         send(COMMAND_GET_ALPHA, out);
         send(i, out);
         callDevice(in, out);
         recv(alpha[i], in);
+        */
     }
 }

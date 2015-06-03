@@ -36,7 +36,7 @@ void send(int32_t i, hls::stream<transmit_t> &fifo) {
 
 void send(float f, hls::stream<transmit_t> &fifo) {
     transmit_t temp;
-    temp.i = (uint32_t)(f * 65536);
+    temp.i = (int32_t)(f * 65536);
     //temp.f = f;
     fifo.write(temp);
 }

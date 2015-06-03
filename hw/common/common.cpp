@@ -2,7 +2,7 @@
 
 #include "../common/common.h"
 
-float dotProduct(data_t * point1, data_t * point2) {
+float dotProduct(data_t & point1, data_t & point2) {
     #pragma HLS PIPELINE
 
     uint16_t i;
@@ -10,7 +10,7 @@ float dotProduct(data_t * point1, data_t * point2) {
 
     for (i = 0; i < DIMENSIONS; i++) {
     #pragma HLS UNROLL
-        sum += point1->dim[i] * point2->dim[i];
+        sum += point1.dim[i] * point2.dim[i];
     }
 
     return sum;

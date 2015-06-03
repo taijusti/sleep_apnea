@@ -4,7 +4,7 @@
 #define COMMON_H
 
     #define FULL_INTEG
-    //#define C_SIM
+    #define C_SIM
 
     #define ABS(a) ((a) < 0 ? -(a) : (a))
     #define MAX(a,b) ((a) > (b) ? (a) : (b))
@@ -61,7 +61,7 @@
             float dim [DIMENSIONS];
         } data_t;
 
-        float dotProduct(data_t * point1, data_t * point2);
+        float dotProduct(data_t & point1, data_t & point2);
         void send(int32_t i, hls::stream<transmit_t> &fifo);
         void send(uint32_t ui, hls::stream<transmit_t> &fifo);
         void send(bool y, hls::stream<transmit_t> &fifo);

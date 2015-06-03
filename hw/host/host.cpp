@@ -195,23 +195,6 @@ static void getPoint(uint32_t idx, data_t & point, float & alpha, float & err,
     callDevice(in, out);
     ap_wait();
     alpha = (in.read().i * 1.0) / 65536;
-
-    /*
-    send(COMMAND_GET_POINT, out);
-    send(idx, out);
-    callDevice(in, out);
-    recv(point, in);
-
-    send(COMMAND_GET_E, out);
-    send(idx, out);
-    callDevice(in, out);
-    recv(err, in);
-
-    send(COMMAND_GET_ALPHA, out);
-    send(idx, out);
-    callDevice(in, out);
-    recv(alpha, in);
-    */
 }
 
 static void getKkt(uint32_t & kkt_violators, uint32_t kktViol [ELEMENTS],
@@ -256,19 +239,6 @@ static void getMaxDeltaE(float err2, float & max_delta_e, uint32_t & point1_idx,
 
     max_delta_e = (in.read().i * 1.0) / 65536;
     point1_idx = in.read().ui;
-
-    /*
-    // set the target E
-    send(COMMAND_SET_E, out);
-    send(err2, out);
-    callDevice(in, out);
-
-    // choose second point based on max delta E
-    send(COMMAND_GET_DELTA_E, out);
-    callDevice(in, out);
-    recv(max_delta_e, in);
-    recv(point1_idx, in);
-    */
 }
 
 void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
@@ -310,7 +280,6 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
     float b_old;
     float delta_b;
     float y_delta_alpha_product;
-    int iter=0;;
     uint32_t start_offset;
 
     // initialize device(s)
@@ -344,22 +313,6 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
         	        changed = false;
         	        break;
         	    }
-        	    /*
-				send(COMMAND_GET_KKT, out);
-				callDevice(in, out);
-				recv(kkt_violators, in);
-				if (kkt_violators == 0) {
-					changed = false;
-					break;
-				}
-
-				for(j=0;j<kkt_violators;j++)
-				{
-
-					recv(kktViol[j],in);
-				}
-				*/
-
         	}
             point2_set = false;
             for (j = 0; j < kkt_violators; j++) {
@@ -478,7 +431,6 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
 
             changed |= tempChanged;
         }
-        iter++;
 
     } while(changed);
 
@@ -494,12 +446,5 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
         callDevice(in, out);
         ap_wait();
         alpha[i] = (in.read().i * 1.0) / 65536;
-
-        /*
-        send(COMMAND_GET_ALPHA, out);
-        send(i, out);
-        callDevice(in, out);
-        recv(alpha[i], in);
-        */
     }
 }

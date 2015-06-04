@@ -195,23 +195,6 @@ static void getPoint(uint32_t idx, data_t & point, float & alpha, float & err,
     callDevice(in, out);
     ap_wait();
     alpha = (in.read().i * 1.0) / 65536;
-
-    /*
-    send(COMMAND_GET_POINT, out);
-    send(idx, out);
-    callDevice(in, out);
-    recv(point, in);
-
-    send(COMMAND_GET_E, out);
-    send(idx, out);
-    callDevice(in, out);
-    recv(err, in);
-
-    send(COMMAND_GET_ALPHA, out);
-    send(idx, out);
-    callDevice(in, out);
-    recv(alpha, in);
-    */
 }
 
 static void getKkt(uint32_t & kkt_violators, uint32_t kktViol [ELEMENTS],
@@ -273,7 +256,8 @@ static void getMaxDeltaE(float err2, float & max_delta_e, uint32_t & point1_idx,
 
 void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
         bool y [ELEMENTS], hls::stream<transmit_t> & in,
-        hls::stream<transmit_t> & out) {
+        hls::stream<transmit_t> & out, hls::stream<transmit_t> & debug) {
+    #pragma HLS INTERFACE axis depth=128 port=debug
     #pragma HLS INTERFACE s_axilite port=return bundle=axi_bus
     #pragma HLS INTERFACE axis depth=4096 port=out
     #pragma HLS INTERFACE axis depth=4096 port=in
@@ -312,6 +296,7 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
     float y_delta_alpha_product;
     int iter=0;;
     uint32_t start_offset;
+    uint32_t iterations = 0;
 
     // initialize device(s)
     // TODO: overwrite when we figure out how the host FPGA
@@ -478,8 +463,14 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
 
             changed |= tempChanged;
         }
+<<<<<<< Updated upstream
         iter++;
 
+=======
+        send(0xdeadbeef, debug);
+        send(iterations, debug);
+        iterations++;
+>>>>>>> Stashed changes
     } while(changed);
 
     // get the results

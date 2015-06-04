@@ -239,25 +239,11 @@ static void getMaxDeltaE(float err2, float & max_delta_e, uint32_t & point1_idx,
 
     max_delta_e = (in.read().i * 1.0) / 65536;
     point1_idx = in.read().ui;
-
-    /*
-    // set the target E
-    send(COMMAND_SET_E, out);
-    send(err2, out);
-    callDevice(in, out);
-
-    // choose second point based on max delta E
-    send(COMMAND_GET_DELTA_E, out);
-    callDevice(in, out);
-    recv(max_delta_e, in);
-    recv(point1_idx, in);
-    */
 }
 
 void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
         bool y [ELEMENTS], hls::stream<transmit_t> & in,
-        hls::stream<transmit_t> & out, hls::stream<transmit_t> & debug) {
-    #pragma HLS INTERFACE axis depth=128 port=debug
+        hls::stream<transmit_t> & out) {
     #pragma HLS INTERFACE s_axilite port=return bundle=axi_bus
     #pragma HLS INTERFACE axis depth=4096 port=out
     #pragma HLS INTERFACE axis depth=4096 port=in
@@ -294,9 +280,7 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
     float b_old;
     float delta_b;
     float y_delta_alpha_product;
-    int iter=0;;
     uint32_t start_offset;
-    uint32_t iterations = 0;
 
     // initialize device(s)
     // TODO: overwrite when we figure out how the host FPGA
@@ -329,22 +313,6 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
         	        changed = false;
         	        break;
         	    }
-        	    /*
-				send(COMMAND_GET_KKT, out);
-				callDevice(in, out);
-				recv(kkt_violators, in);
-				if (kkt_violators == 0) {
-					changed = false;
-					break;
-				}
-
-				for(j=0;j<kkt_violators;j++)
-				{
-
-					recv(kktViol[j],in);
-				}
-				*/
-
         	}
             point2_set = false;
             for (j = 0; j < kkt_violators; j++) {
@@ -463,14 +431,7 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
 
             changed |= tempChanged;
         }
-<<<<<<< Updated upstream
-        iter++;
 
-=======
-        send(0xdeadbeef, debug);
-        send(iterations, debug);
-        iterations++;
->>>>>>> Stashed changes
     } while(changed);
 
     // get the results
@@ -485,12 +446,5 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
         callDevice(in, out);
         ap_wait();
         alpha[i] = (in.read().i * 1.0) / 65536;
-
-        /*
-        send(COMMAND_GET_ALPHA, out);
-        send(i, out);
-        callDevice(in, out);
-        recv(alpha[i], in);
-        */
     }
 }

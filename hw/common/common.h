@@ -4,7 +4,7 @@
 #define COMMON_H
 
     #define FULL_INTEG
-    #define C_SIM
+    //#define C_SIM
 
     #define ABS(a) ((a) < 0 ? -(a) : (a))
     #define MAX(a,b) ((a) > (b) ? (a) : (b))

@@ -2,9 +2,10 @@
 
 #ifndef COMMON_H
 #define COMMON_H
+    #define C_SIM
 
-    #define FULL_INTEG
-    //#define C_SIM
+    #include <stdint.h>
+    #include <hls_stream.h>
 
     #define ABS(a) ((a) < 0 ? -(a) : (a))
     #define MAX(a,b) ((a) > (b) ? (a) : (b))
@@ -16,10 +17,8 @@
     #define TOLERANCE (0.001)
     #define EPSILON (0.001)
 
-    #ifdef FULL_INTEG
-        #define PARTITIONS (2)
-        #define PARTITION_ELEMENTS (ELEMENTS / PARTITIONS)
-    #endif
+    #define PARTITIONS (2)
+    #define PARTITION_ELEMENTS (ELEMENTS / PARTITIONS)
 
     #define COMMAND_INIT_DATA             (0)
     #define COMMAND_GET_POINT             (1)
@@ -43,42 +42,25 @@
     #define COMMAND_GET_POINT_1           (17)
     #define COMMAND_GET_TARGET_E          (18)
 
-    #ifdef FULL_INTEG
-    	#include <stdint.h>
-		#include <hls_stream.h>
-		#include <ap_fixed.h>
+    typedef union {
+        uint32_t ui;
+        int32_t i;
+        float f;
+        bool b;
+    } transmit_t;
 
-        //typedef ap_fixed<32, 4> fixed_t;
+    typedef struct {
+        float dim [DIMENSIONS];
+    } data_t;
 
-		typedef union {
-			uint32_t ui;
-			int32_t i;
-			float f;
-			bool b;
-		} transmit_t;
-
-        typedef struct {
-            float dim [DIMENSIONS];
-        } data_t;
-
-        float dotProduct(data_t & point1, data_t & point2);
-        void send(int32_t i, hls::stream<transmit_t> &fifo);
-        void send(uint32_t ui, hls::stream<transmit_t> &fifo);
-        void send(bool y, hls::stream<transmit_t> &fifo);
-        void send(float f, hls::stream<transmit_t> &fifo);
-        void send(data_t &f, hls::stream<transmit_t> &fifo);
-        void recv(int32_t &i, hls::stream<transmit_t> &fifo);
-        void recv(uint32_t &ui, hls::stream<transmit_t> &fifo);
-        void recv(bool &y, hls::stream<transmit_t> &fifo);
-        void recv(float &f, hls::stream<transmit_t> &fifo);
-        void recv(data_t &f, hls::stream<transmit_t> &fifo);
-
-    #else
-        typedef struct {
-            float dim [DIMENSIONS];
-        } data_t;
-
-        float dotProduct(data_t * point1, data_t * point2);
-    #endif
-
+    void send(int32_t i, hls::stream<transmit_t> &fifo);
+    void send(uint32_t ui, hls::stream<transmit_t> &fifo);
+    void send(bool y, hls::stream<transmit_t> &fifo);
+    void send(float f, hls::stream<transmit_t> &fifo);
+    void send(data_t &f, hls::stream<transmit_t> &fifo);
+    void recv(int32_t &i, hls::stream<transmit_t> &fifo);
+    void recv(uint32_t &ui, hls::stream<transmit_t> &fifo);
+    void recv(bool &y, hls::stream<transmit_t> &fifo);
+    void recv(float &f, hls::stream<transmit_t> &fifo);
+    void recv(data_t &f, hls::stream<transmit_t> &fifo);
 #endif

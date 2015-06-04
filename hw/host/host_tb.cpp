@@ -1,6 +1,9 @@
 #include "../common/common.h"
 #include "host_inc.h"
+#include <math.h>
+#include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 #define EQ_ERR(a,b,err) (ABS((a) - (b)) < (err))
 #define GT_ERR(a,b,err) (((a) - (b)) > (err))
@@ -226,8 +229,7 @@ bool examineExample(int d2Idx, data_t training_data [ELEMENTS], bool y [ELEMENTS
 }
 
 void smotrain(data_t training_data [ELEMENTS], bool y [ELEMENTS],
-        float alpha [ELEMENTS], float & b)
-{
+        float alpha [ELEMENTS], float & b) {
     int i, j;
 
     memset(alpha, 0, sizeof(float) * ELEMENTS);
@@ -270,7 +272,6 @@ int main(void) {
     uint32_t j;
     hls::stream<transmit_t> in;
     hls::stream<transmit_t> out;
-    hls::stream<transmit_t> debug;
     FILE * fp = fopen("/home/taijusti/Documents/github/sleep_apnea/hw/host/svmguide1-t.txt", "r");
 
     // test take step
@@ -352,7 +353,7 @@ int main(void) {
     smotrain(data, y, alpha_expected, b_expected);
 
     // try the actual
-    host(data, alpha_actual, b_actual, y, in, out, debug);
+    host(data, alpha_actual, b_actual, y, in, out);
 
     // check if the returned alphas matches within some error
     for (i = 0; i < ELEMENTS; i++) {

@@ -1,6 +1,5 @@
 // ECE1373 Digital Systems Design for SoC
 
-
 #include "../e/e_inc.h"
 #include "../common/common.h"
 #include <stdint.h>

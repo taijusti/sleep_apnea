@@ -2,20 +2,6 @@
 
 #include "../common/common.h"
 
-float dotProduct(data_t & point1, data_t & point2) {
-    #pragma HLS PIPELINE
-
-    uint16_t i;
-    float sum = 0;
-
-    for (i = 0; i < DIMENSIONS; i++) {
-    #pragma HLS UNROLL
-        sum += point1.dim[i] * point2.dim[i];
-    }
-
-    return sum;
-}
-
 void send(bool y, hls::stream<transmit_t> &fifo) {
 	transmit_t temp;
 	temp.b = y;
@@ -37,7 +23,6 @@ void send(int32_t i, hls::stream<transmit_t> &fifo) {
 void send(float f, hls::stream<transmit_t> &fifo) {
     transmit_t temp;
     temp.i = (int32_t)(f * 65536);
-    //temp.f = f;
     fifo.write(temp);
 }
 
@@ -63,7 +48,6 @@ void recv(int32_t &i, hls::stream<transmit_t> &fifo) {
 
 void recv(float &f, hls::stream<transmit_t> &fifo) {
     f = (fifo.read().i * 1.0) / 65536;
-    //f = fifo.read().f;
 }
 
 void recv(data_t & point, hls::stream<transmit_t> & fifo) {

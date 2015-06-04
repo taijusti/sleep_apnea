@@ -39,7 +39,7 @@ static void kkt_pipeline (data_t & point0, data_t & point1, hls::stream<data_t> 
         hls::stream<uint32_t> & kkt_bram_fifo, uint32_t & kkt_violators,
         float y1_delta_alpha1_product, float y2_delta_alpha2_product,
         float delta_b) {
-    #pragma HLS DATAFLOW // TODO
+    #pragma HLS DATAFLOW
     #pragma HLS INLINE off
     #pragma HLS PIPELINE
 

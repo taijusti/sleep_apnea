@@ -272,6 +272,7 @@ int main(void) {
     uint32_t j;
     hls::stream<transmit_t> in;
     hls::stream<transmit_t> out;
+    hls::stream<transmit_t> debug;
     FILE * fp = fopen("/home/taijusti/Documents/github/sleep_apnea/hw/host/svmguide1-t.txt", "r");
 
     // test take step
@@ -353,7 +354,7 @@ int main(void) {
     smotrain(data, y, alpha_expected, b_expected);
 
     // try the actual
-    host(data, alpha_actual, b_actual, y, in, out);
+    host(data, alpha_actual, b_actual, y, in, out, debug);
 
     // check if the returned alphas matches within some error
     for (i = 0; i < ELEMENTS; i++) {

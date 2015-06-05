@@ -243,10 +243,11 @@ static void getMaxDeltaE(float err2, float & max_delta_e, uint32_t & point1_idx,
 
 void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
         bool y [ELEMENTS], hls::stream<transmit_t> & in,
-        hls::stream<transmit_t> & out) {
+        hls::stream<transmit_t> & out, hls::stream<transmit_t> & debug) {
     #pragma HLS INTERFACE s_axilite port=return bundle=axi_bus
     #pragma HLS INTERFACE axis depth=4096 port=out
     #pragma HLS INTERFACE axis depth=4096 port=in
+    #pragma HLS INTERFACE axis depth=65536 port=debug
     #pragma HLS INTERFACE s_axilite port=b bundle=axi_bus
     #pragma HLS INTERFACE s_axilite port=data bundle=axi_bus
     #pragma HLS INTERFACE s_axilite port=alpha bundle=axi_bus
@@ -281,6 +282,7 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
     float delta_b;
     float y_delta_alpha_product;
     uint32_t start_offset;
+    uint32_t iterations = 0;
 
     // initialize device(s)
     // TODO: overwrite when we figure out how the host FPGA
@@ -427,11 +429,25 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
                 send(COMMAND_SET_DELTA_B, out);
                 send(delta_b, out);
                 callDevice(in, out);
+
+
+                // TODO: strictly for debug
+                iterations++;
+                transmit_t temp;
+                temp.ui = 0xdeadbeef;
+                debug.write(temp);
+                temp.ui = point1_idx;
+                debug.write(temp);
+                temp.ui = point2_idx;
+                debug.write(temp);
+                temp.ui = kkt_violators;
+                debug.write(temp);
+                temp.ui = iterations;
+                debug.write(temp);
             }
 
             changed |= tempChanged;
         }
-
     } while(changed);
 
     // get the results

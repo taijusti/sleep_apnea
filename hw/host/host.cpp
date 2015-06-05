@@ -170,30 +170,39 @@ static void getPoint(uint32_t idx, data_t & point, float & alpha, float & err,
     transmit_t temp;
     uint32_t i;
 
+    // send the command to get the point
     temp.ui = COMMAND_GET_POINT;
     out.write(temp);
     temp.ui = idx;
     out.write(temp);
-    callDevice(in, out);
-    ap_wait();
-    for (i = 0; i < DIMENSIONS; i++) {
-        point.dim[i] = (in.read().i * 1.0) / 65536;
-    }
 
+    // send the command to get E
     temp.ui = COMMAND_GET_E;
     out.write(temp);
     temp.ui = idx;
     out.write(temp);
-    callDevice(in, out);
-    ap_wait();
-    err = (in.read().i * 1.0) / 65536;
 
+    // send the command to get alpha
     temp.ui = COMMAND_GET_ALPHA;
     out.write(temp);
     temp.ui = idx;
     out.write(temp);
+
+    // wait for device to respond
+    callDevice(in, out);
+    callDevice(in, out);
     callDevice(in, out);
     ap_wait();
+
+    // receive the point
+    for (i = 0; i < DIMENSIONS; i++) {
+        point.dim[i] = (in.read().i * 1.0) / 65536;
+    }
+
+    // receive the error
+    err = (in.read().i * 1.0) / 65536;
+
+    // receive the alpha
     alpha = (in.read().i * 1.0) / 65536;
 }
 
@@ -319,7 +328,7 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
             point2_set = false;
             for (j = 0; j < kkt_violators; j++) {
                 uint32_t temp;
-                temp=kktViol[j];
+                temp = kktViol[j];
                 if (temp >= i && !point2_set) {
                     i = temp;
                     point2_idx = temp;
@@ -460,7 +469,11 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
         temp.ui = i;
         out.write(temp);
         callDevice(in, out);
-        ap_wait();
+    }
+
+    ap_wait();
+
+    for (i = 0; i < ELEMENTS; i++) {
         alpha[i] = (in.read().i * 1.0) / 65536;
     }
 }

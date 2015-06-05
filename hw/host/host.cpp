@@ -164,7 +164,7 @@ static void callDevice(hls::stream<transmit_t> & in, hls::stream<transmit_t> & o
 #endif
 }
 
-static void getPoint(uint32_t idx, data_t & point, float & alpha, float & err,
+static void getPoint(uint32_t idx, data_t & point, bool & y, float & alpha, float & err,
         hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
 #pragma HLS INLINE off
     transmit_t temp;
@@ -176,21 +176,7 @@ static void getPoint(uint32_t idx, data_t & point, float & alpha, float & err,
     temp.ui = idx;
     out.write(temp);
 
-    // send the command to get E
-    temp.ui = COMMAND_GET_E;
-    out.write(temp);
-    temp.ui = idx;
-    out.write(temp);
-
-    // send the command to get alpha
-    temp.ui = COMMAND_GET_ALPHA;
-    out.write(temp);
-    temp.ui = idx;
-    out.write(temp);
-
     // wait for device to respond
-    callDevice(in, out);
-    callDevice(in, out);
     callDevice(in, out);
     ap_wait();
 
@@ -198,6 +184,9 @@ static void getPoint(uint32_t idx, data_t & point, float & alpha, float & err,
     for (i = 0; i < DIMENSIONS; i++) {
         point.dim[i] = (in.read().i * 1.0) / 65536;
     }
+
+    // receive the y
+    y = in.read().b;
 
     // receive the error
     err = (in.read().i * 1.0) / 65536;
@@ -271,12 +260,12 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
     uint32_t temp;
     data_t point1;
     #pragma HLS ARRAY_PARTITION variable=point1.dim complete dim=1
-    //bool y1;
+    bool y1;
     uint32_t point1_idx;
     float err1;
     data_t point2;
     #pragma HLS ARRAY_PARTITION variable=point2.dim dim=1
-    //bool y2;
+    bool y2;
     uint32_t point2_idx;
     float err2;
     uint32_t kktViol[ELEMENTS];
@@ -343,13 +332,13 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
             }
 
             // get all data associated with the first point
-            getPoint(point2_idx, point2, alpha2, err2, in, out);
+            getPoint(point2_idx, point2, y2, alpha2, err2, in, out);
 
             // get max delta e
             getMaxDeltaE(err2, max_delta_e, point1_idx, in, out);
 
             // get all data related to the second point
-            getPoint(point1_idx, point1, alpha1, err1, in, out);
+            getPoint(point1_idx, point1, y1, alpha1, err1, in, out);
 
             // at this point we have all the information we need for a single
             // iteration. compute the new alphas and b.
@@ -358,8 +347,8 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
             b_old = b;
 
             tempChanged = false;
-            tempChanged |= take_step(point1, alpha1, y[point1_idx], err1,
-                                    point2, alpha2, y[point2_idx], err2, b,
+            tempChanged |= take_step(point1, alpha1, y1, err1,
+                                    point2, alpha2, y2, err2, b,
                                     point1_idx, point2_idx);
 
             // Second point heuristic: Hierarchy #1 - loop over all non-bound alphas
@@ -367,12 +356,12 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
             j = start_offset = i;
             while (!tempChanged && j < (start_offset + ELEMENTS)) {
                 point1_idx = j % ELEMENTS;
-                getPoint(point1_idx, point1, alpha1, err1, in, out);
+                getPoint(point1_idx, point1, y1, alpha1, err1, in, out);
 
                 if (alpha1 != 0 && alpha1 != C) {
                     alpha1_old = alpha1;
-                    tempChanged |= take_step(point1, alpha1, y[point1_idx], err1,
-                                             point2, alpha2, y[point2_idx], err2, b,
+                    tempChanged |= take_step(point1, alpha1, y1, err1,
+                                             point2, alpha2, y2, err2, b,
                                              point1_idx, point2_idx);
                 }
 
@@ -384,12 +373,12 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
             j = start_offset = i;
             while (!tempChanged && j < (start_offset + ELEMENTS)) {
                 point1_idx = j % ELEMENTS;
-                getPoint(point1_idx, point1, alpha1, err1, in, out);
+                getPoint(point1_idx, point1, y1, alpha1, err1, in, out);
 
                 if (alpha1 == 0 || alpha1 == C) {
                     alpha1_old = alpha1;
-                    tempChanged |= take_step(point1, alpha1, y[point1_idx], err1,
-                                           point2, alpha2, y[point2_idx], err2, b,
+                    tempChanged |= take_step(point1, alpha1, y1, err1,
+                                           point2, alpha2, y2, err2, b,
                                            point1_idx, point2_idx);
                 }
 
@@ -421,14 +410,14 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
 
                 // compute and broadcast the y1 * delta alpha1 product
                 delta_a = alpha1 - alpha1_old;
-                y_delta_alpha_product = (y[point1_idx] ? 1 : -1) * delta_a;
+                y_delta_alpha_product = (y1 ? 1 : -1) * delta_a;
                 send(COMMAND_SET_Y1_ALPHA1_PRODUCT, out);
                 send(y_delta_alpha_product, out);
                 callDevice(in, out);
 
                 // compute and broadcast the y2 * delta alpha2 product
                 delta_a = alpha2 - alpha2_old;
-                y_delta_alpha_product = (y[point2_idx] ? 1 : -1) * delta_a;
+                y_delta_alpha_product = (y2 ? 1 : -1) * delta_a;
                 send(COMMAND_SET_Y2_ALPHA2_PRODUCT, out);
                 send(y_delta_alpha_product, out);
                 callDevice(in, out);

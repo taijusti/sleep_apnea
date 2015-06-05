@@ -194,6 +194,9 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
         case COMMAND_GET_POINT:
             recv(j, in);
             send(data[j], out);
+            send(y[j], out);
+            send(e_bram[j], out);
+            send(alpha[j], out);
             break;
 
         case COMMAND_SET_POINT_0:

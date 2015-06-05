@@ -166,13 +166,13 @@ int main(void) {
     device(in, out);
 
     // set the points
-    send(COMMAND_SET_POINT_0, in);
+    send(COMMAND_SET_POINT_1, in);
     for (i = 0; i < DIMENSIONS; i++) {
         send(point1.dim[i], in);
     }
 
     device(in, out);
-    send(COMMAND_SET_POINT_1, in);
+    send(COMMAND_SET_POINT_2, in);
     for (i = 0; i < DIMENSIONS; i++) {
         send(point2.dim[i], in);
     }

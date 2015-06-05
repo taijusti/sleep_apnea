@@ -399,12 +399,12 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
 
                 // send all the information necessary to prep for the next iteration
                 // b-cast to all FPGAs to set the first point
-                send(COMMAND_SET_POINT_0, out);
+                send(COMMAND_SET_POINT_1, out);
                 send(point1, out);
                 callDevice(in, out);
 
                 // b-cast to all FPGAs to set the second point
-                send(COMMAND_SET_POINT_1, out);
+                send(COMMAND_SET_POINT_2, out);
                 send(point2, out);
                 callDevice(in, out);
 

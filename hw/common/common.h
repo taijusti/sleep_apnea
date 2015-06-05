@@ -22,8 +22,8 @@
 
     #define COMMAND_INIT_DATA             (0)
     #define COMMAND_GET_POINT             (1)
-    #define COMMAND_SET_POINT_0           (2)
-    #define COMMAND_SET_POINT_1           (3)
+    #define COMMAND_SET_POINT_1           (2)
+    #define COMMAND_SET_POINT_2           (3)
     #define COMMAND_SET_E                 (4)
     #define COMMAND_GET_E                 (5)
     #define COMMAND_GET_KKT               (6)
@@ -38,8 +38,8 @@
     #define COMMAND_GET_DELTA_B           (13)
     #define COMMAND_GET_Y1_ALPHA1_PRODUCT (14)
     #define COMMAND_GET_Y2_ALPHA2_PRODUCT (15)
-    #define COMMAND_GET_POINT_0           (16)
-    #define COMMAND_GET_POINT_1           (17)
+    #define COMMAND_GET_POINT_1           (16)
+    #define COMMAND_GET_POINT_2           (17)
     #define COMMAND_GET_TARGET_E          (18)
 
     typedef union {

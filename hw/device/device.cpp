@@ -207,7 +207,6 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
         case COMMAND_GET_E:
             recv(i, in);
             send(e_bram[i], out);
-
             break;
 
         case COMMAND_SET_E:

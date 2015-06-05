@@ -2,7 +2,7 @@
 
 #ifndef COMMON_H
 #define COMMON_H
-    #define C_SIM
+    //#define C_SIM
 
     #include <stdint.h>
     #include <hls_stream.h>

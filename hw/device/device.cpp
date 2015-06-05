@@ -140,9 +140,9 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
     static float delta_b;
     static float target_e;
     static data_t point1;
-    #pragma HLS ARRAY_PARTITION variable=point0.dim complete dim=1
-    static data_t point2;
     #pragma HLS ARRAY_PARTITION variable=point1.dim complete dim=1
+    static data_t point2;
+    #pragma HLS ARRAY_PARTITION variable=point2.dim complete dim=1
     hls::stream<uint32_t> kkt_fifo;
     #pragma HLS STREAM variable=kkt_fifo depth=128
     uint32_t kkt_violators;

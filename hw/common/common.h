@@ -19,6 +19,7 @@
 
     #define PARTITIONS (2)
     #define PARTITION_ELEMENTS (ELEMENTS / PARTITIONS)
+    #define NUM_DEVICES (2)
 
     #define COMMAND_INIT_DATA             (0)
     #define COMMAND_GET_POINT             (1)

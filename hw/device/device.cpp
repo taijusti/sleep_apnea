@@ -22,7 +22,8 @@ static void init_device(data_t data [ELEMENTS], hls::stream<transmit_t> & in,
     uint32_t j;
 
     // initialize the BRAMs
-    for (i = 0; i < ELEMENTS; i++) {
+    //for (i = 0; i < ELEMENTS; i++) {
+    for (i = 0; i < (ELEMENTS/NUM_DEVICES); i++) { //pw
         for (j = 0; j < DIMENSIONS; j++) {
              recv(data[i].dim[j], in);
         }

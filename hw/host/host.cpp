@@ -16,6 +16,20 @@ using namespace std;
 #include "../device/device_inc.h"
 #endif
 
+int rand_int (void) {
+    int k1;
+    static int rnd_seed = 1;
+    int ix = rnd_seed;
+
+    k1 = ix / 127773;
+    ix = 16807 * (ix - k1 * 127773) - k1 * 2836;
+    if (ix < 0) {
+        ix += 2147483647;
+    }
+    rnd_seed = ix;
+    return rnd_seed;
+}
+
 #ifdef C_SIM
 bool take_step(data_t & point1, float & alpha1, bool y1, float err1,
         data_t & point2, float & alpha2, bool y2, float err2, float & b,
@@ -243,9 +257,9 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
         bool y [ELEMENTS], hls::stream<transmit_t> & in,
         hls::stream<transmit_t> & out, hls::stream<transmit_t> & debug) {
     #pragma HLS INTERFACE s_axilite port=return bundle=axi_bus
-    #pragma HLS INTERFACE axis depth=4096 port=out
-    #pragma HLS INTERFACE axis depth=4096 port=in
-    #pragma HLS INTERFACE axis depth=65536 port=debug
+    #pragma HLS INTERFACE axis port=out
+    #pragma HLS INTERFACE axis port=in
+    #pragma HLS INTERFACE axis port=debug
     #pragma HLS INTERFACE s_axilite port=b bundle=axi_bus
     #pragma HLS INTERFACE s_axilite port=data bundle=axi_bus
     #pragma HLS INTERFACE s_axilite port=alpha bundle=axi_bus
@@ -352,8 +366,7 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
                                     point1_idx, point2_idx);
 
             // Second point heuristic: Hierarchy #1 - loop over all non-bound alphas
-            //j = start_offset = rand() % ELEMENTS;
-            j = start_offset = i;
+            j = start_offset = rand_int() % ELEMENTS;
             while (!tempChanged && j < (start_offset + ELEMENTS)) {
                 point1_idx = j % ELEMENTS;
                 getPoint(point1_idx, point1, y1, alpha1, err1, in, out);
@@ -369,8 +382,7 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
             }
 
             // Second point heuristic: Hierarchy #1 - loop over all non-bound alphas
-            //j = start_offset = rand() % ELEMENTS;
-            j = start_offset = i;
+            j = start_offset = rand_int() % ELEMENTS;
             while (!tempChanged && j < (start_offset + ELEMENTS)) {
                 point1_idx = j % ELEMENTS;
                 getPoint(point1_idx, point1, y1, alpha1, err1, in, out);
@@ -428,20 +440,9 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
                 send(delta_b, out);
                 callDevice(in, out);
 
-
-                // TODO: strictly for debug
+                // for debug
                 iterations++;
-                transmit_t temp;
-                temp.ui = 0xdeadbeef;
-                debug.write(temp);
-                temp.ui = point1_idx;
-                debug.write(temp);
-                temp.ui = point2_idx;
-                debug.write(temp);
-                temp.ui = kkt_violators;
-                debug.write(temp);
-                temp.ui = iterations;
-                debug.write(temp);
+                send(iterations, debug);
             }
 
             changed |= tempChanged;
@@ -457,12 +458,10 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
         out.write(temp);
         temp.ui = i;
         out.write(temp);
+
         callDevice(in, out);
-    }
+        ap_wait();
 
-    ap_wait();
-
-    for (i = 0; i < ELEMENTS; i++) {
         alpha[i] = (in.read().i * 1.0) / 65536;
     }
 }

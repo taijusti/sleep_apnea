@@ -13,11 +13,12 @@
 #include "xstatus.h"
 #include "xdevice.h"
 #include "xhost.h"
+#include <assert.h>
 
 #define ABS(a) ((a) < 0 ? -(a) : (a))
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
-#define ELEMENTS (128)
+#define ELEMENTS (2048)
 #define DIMENSIONS (4)
 #define C (5)
 #define ERROR (0.001)
@@ -63,6 +64,7 @@ typedef union {
 XDevice device_inst;
 XHost host_inst;
 XLlFifo host_debug_fifo;
+XLlFifo device_debug_fifo;
 
 static float randFloat(void) {
     return (float)rand() / RAND_MAX;
@@ -229,7 +231,7 @@ bool examineExample(int d2Idx, data_t training_data [ELEMENTS], bool y [ELEMENTS
     float maxErr = -1;
     float err, err1, err2;
     err2 = classify(alpha, b, training_data, y, training_data[d2Idx]) - (y[d2Idx] ? 1 : -1);
-    static uint32_t start = 0;
+    //static uint32_t start = 0;
 
     // do something with this point only if it is a kKT violator
     if (sw_kkt(alpha[d2Idx], y[d2Idx], err2)) {
@@ -260,8 +262,8 @@ bool examineExample(int d2Idx, data_t training_data [ELEMENTS], bool y [ELEMENTS
     // loop over all non-zero and non-C alpha, starting
     // at a random point, looking for a valid point to
     // take a step on
-    //int start = rand() % ELEMENTS;
-    start++;
+    int start = rand() % ELEMENTS;
+    //start++;
     for (i = start % ELEMENTS; i < start + ELEMENTS; i++)
     {
         if ((alpha[i % ELEMENTS] != 0) && (alpha[i % ELEMENTS] != C)) {
@@ -277,8 +279,8 @@ bool examineExample(int d2Idx, data_t training_data [ELEMENTS], bool y [ELEMENTS
     // could not find a valid point amongst all non-zero and
     // non-C examples, we now iterate over all examples as
     // a final effort to take a step on this point
-    //start = rand() % ELEMENTS;
-    start++;
+    start = rand() % ELEMENTS;
+    //start++;
     for (i = start % ELEMENTS; i < start + ELEMENTS; i++) {
         err1 = classify(alpha, b, training_data, y, training_data[i % ELEMENTS])
                 - (y[i % ELEMENTS] ? 1 : -1);
@@ -688,6 +690,7 @@ static bool test_host(void) {
 	uint32_t j;
 	uint32_t temp;
 	uint32_t sw_iterations;
+	uint32_t status;
 
 	// initialize alphas and b
 	memset(expected_alpha, 0, sizeof(float) * ELEMENTS);
@@ -700,30 +703,30 @@ static bool test_host(void) {
 		y[i] = randFloat() > 0.5;
 
 		for (j = 0; j < DIMENSIONS; j++) {
-			data[i].dim[j] = randFloat();
+			data[i].dim[j] = randFloat() * 16384;
 		}
 	}
-
-	// generate expected values
-	sw_host(data, y, expected_alpha, expected_b, sw_iterations);
 
 	// send the training data over to the hw host
 	for (i = 0; i < ELEMENTS; i++) {
 		for (j = 0; j < DIMENSIONS; j++) {
 			convert_t temp0;
 			temp0.f = data[i].dim[j];
-			XHost_Write_data_dim_Words(&host_inst, i * DIMENSIONS + j, &(temp0.i), 1);
+			status = XHost_Write_data_dim_Words(&host_inst, i * DIMENSIONS + j, &(temp0.i), 1);
+			assert(status != 0);
 		}
 
 		char temp = y[i];
-		XHost_Write_y_Bytes(&host_inst, i, &temp, 1);
+		status = XHost_Write_y_Bytes(&host_inst, i, &temp, 1);
+		assert(status != 0);
 	}
 
 	// read back all data to make sure host was configured properly
 	for (i = 0; i < ELEMENTS; i++) {
 		for (j = 0; j < DIMENSIONS; j++) {
 			int temp0;
-			XHost_Read_data_dim_Words(&host_inst, i * DIMENSIONS + j, &temp0, 1);
+			status = XHost_Read_data_dim_Words(&host_inst, i * DIMENSIONS + j, &temp0, 1);
+			assert(status != 0);
 
 			convert_t temp;
 			temp.i = temp0;
@@ -734,7 +737,8 @@ static bool test_host(void) {
 		}
 
 		char temp1;
-		XHost_Read_y_Bytes(&host_inst, i, &temp1, 1);
+		status = XHost_Read_y_Bytes(&host_inst, i, &temp1, 1);
+		assert(status != 0);
 		if (temp1 != y[i]) {
 			return false;
 		}
@@ -745,38 +749,50 @@ static bool test_host(void) {
 
 	// forward fifo communication to device
 	uint32_t occupancy;
+	uint32_t kkt_violators;
 	uint32_t point1_idx;
 	uint32_t point2_idx;
-	uint32_t kkt_violators;
-	uint32_t iterations;
+	uint32_t state = 0;
+
 	while (XHost_IsDone(&host_inst) == 0) {
-		/*
-		do {
-			occupancy = XLlFifo_iRxOccupancy(&host_debug_fifo);
-		} while(occupancy == 0);
-		RxReceive(&host_debug_fifo, &temp); // 0xdeadbeef
+		occupancy = XLlFifo_iRxOccupancy(&host_debug_fifo);
+		for (i = 0; i < occupancy; i++) {
+			assert(host_inst.Axi_bus_BaseAddress == XPAR_XHOST_0_S_AXI_AXI_BUS_BASEADDR);
+			RxReceive(&host_debug_fifo, &temp);
 
-		do {
-			occupancy = XLlFifo_iRxOccupancy(&host_debug_fifo);
-		} while(occupancy == 0);
-		RxReceive(&host_debug_fifo, &point1_idx); // point1 idx
+			switch (state) {
+			default:
+			case 0:
+				state = 1;
+				assert(temp == 0xdeadbeef);
+				break;
 
-		do {
-			occupancy = XLlFifo_iRxOccupancy(&host_debug_fifo);
-		} while(occupancy == 0);
-		RxReceive(&host_debug_fifo, &point2_idx); // point2 idx
+			case 1:
+				state = 2;
+				kkt_violators = temp;
+				break;
 
-		do {
-			occupancy = XLlFifo_iRxOccupancy(&host_debug_fifo);
-		} while(occupancy == 0);
-		RxReceive(&host_debug_fifo, &kkt_violators); // kkt violators
+			case 2:
+				state = 3;
+				point1_idx = temp;
+				break;
 
-		do {
-			occupancy = XLlFifo_iRxOccupancy(&host_debug_fifo);
-		} while(occupancy == 0);
-		RxReceive(&host_debug_fifo, &iterations); // iterations
-		*/
+			case 3:
+				state = 0;
+				point2_idx = temp;
+				break;
+			}
+		}
+
+		occupancy = XLlFifo_iRxOccupancy(&device_debug_fifo);
+		for (i = 0; i < occupancy; i++) {
+			assert(host_inst.Axi_bus_BaseAddress == XPAR_XHOST_0_S_AXI_AXI_BUS_BASEADDR);
+			RxReceive(&device_debug_fifo, &temp);
+		}
 	}
+
+	// generate expected values
+	sw_host(data, y, expected_alpha, expected_b, sw_iterations);
 
 	// read back all the computed values
 	XHost_Read_alpha_Words(&host_inst, 0, (int *) actual_alpha, ELEMENTS);
@@ -795,13 +811,16 @@ static bool test_host(void) {
 }
 
 int main(void) {
-	XLlFifo_Config * host_debug_fifo_cfg = XLlFfio_LookupConfig(0);
+	//XLlFifo_Config * device_debug_fifo_cfg = XLlFfio_LookupConfig(XPAR_DEVICE_DEBUG_FIFO_DEVICE_ID);
+	XLlFifo_Config * host_debug_fifo_cfg = XLlFfio_LookupConfig(XPAR_HOST_DEBUG_FIFO_DEVICE_ID);
 
 	// initialize device and host
 	XDevice_Initialize(&device_inst, 0);
 	XHost_Initialize(&host_inst, 0);
 
     // configure host/device fifos
+	//XLlFifo_CfgInitialize(&device_debug_fifo, device_debug_fifo_cfg, device_debug_fifo_cfg->BaseAddress);
+    //XLlFifo_IntClear(&device_debug_fifo, 0xffffffff);
 	XLlFifo_CfgInitialize(&host_debug_fifo, host_debug_fifo_cfg, host_debug_fifo_cfg->BaseAddress);
     XLlFifo_IntClear(&host_debug_fifo, 0xffffffff);
 

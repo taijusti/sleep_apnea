@@ -21,6 +21,7 @@ void send(int32_t i, hls::stream<transmit_t> &fifo) {
 }
 
 void send(float f, hls::stream<transmit_t> &fifo) {
+#pragma HLS INLINE off
     transmit_t temp;
     temp.i = (int32_t)(f * 65536);
     fifo.write(temp);
@@ -47,6 +48,7 @@ void recv(int32_t &i, hls::stream<transmit_t> &fifo) {
 }
 
 void recv(float &f, hls::stream<transmit_t> &fifo) {
+#pragma HLS INLINE off
     f = (fifo.read().i * 1.0) / 65536;
 }
 

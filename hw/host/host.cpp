@@ -159,14 +159,32 @@ static bool take_step(data_t & point1, float & alpha1, bool y1, float err1,
 }
 
 //[pw]
-void SetDevice(uint32_t device_addr) {
+void distribute(hls::stream<transmit_t> &in,
+		hls::stream<transmit_t> &out_0,
+		hls::stream<transmit_t> &out_1,
+		uint32_t device_addr) {
 	// Function to map the DeviceID to MAC for the Ethernet interface
 	// The host and devices should have a list of MAC addresses of the system
 	// after the correct device is set, data will be streaming out by calling the device
 
+#pragma HLS INLINE off
+	// Function to distribute the output stream, according to the device address
+	transmit_t temp = in.read();
+
+	switch (device_addr) {
+		case 0:
+			out_0.write(temp);
+			break;
+		case 1:
+			out_1.write(temp);
+			break;
+		default:
+			break;
+	}
 }
 
 uint32_t ChooseDevice(uint32_t idx) {
+#pragma HLS INLINE off
 	// Method to distribute point: based on the index of the point
 	// e.g. for a set of 128 points with 2 devices,
 	// idx 0 - 63 will be assigned to Device 0
@@ -182,19 +200,35 @@ uint32_t ChooseDevice(uint32_t idx) {
 static void callDevice(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, uint32_t idx) {
 	//[pw]
 	uint32_t device_addr;
+	hls::stream<transmit_t> out_0;
+	hls::stream<transmit_t> out_1;
+
 	device_addr = ChooseDevice(idx);
-	SetDevice(device_addr);
+	distribute(out, out_0, out_1, device_addr);
 	//[/pw]
 #ifdef C_SIM
-    device(out, in);
+	if (device_addr == 0) {
+		device(out_0, in);
+	}
+	else if (device_addr == 1) {
+		device(out_1, in);
+	}
 #endif
 }
 
 //[pw]
 static void callChosenDevice(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, uint32_t device_addr) {
-	SetDevice(device_addr);
+	hls::stream<transmit_t> out_0;
+	hls::stream<transmit_t> out_1;
+
+	distribute(out, out_0, out_1, device_addr);
 #ifdef C_SIM
-    device(out, in);
+	if (device_addr == 0) {
+		device(out_0, in);
+	}
+	else if (device_addr == 1) {
+		device(out_1, in);
+	}
 #endif
 }
 //[/pw]

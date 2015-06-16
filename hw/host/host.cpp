@@ -206,14 +206,16 @@ static void callDevice(hls::stream<transmit_t> & in, hls::stream<transmit_t> & o
 	device_addr = ChooseDevice(idx);
 	distribute(out, out_0, out_1, device_addr);
 	//[/pw]
-#ifdef C_SIM
 	if (device_addr == 0) {
+#ifdef C_SIM
 		device(out_0, in);
+#endif
 	}
 	else if (device_addr == 1) {
+#ifdef C_SIM
 		device(out_1, in);
-	}
 #endif
+	}
 }
 
 //[pw]
@@ -222,14 +224,16 @@ static void callChosenDevice(hls::stream<transmit_t> & in, hls::stream<transmit_
 	hls::stream<transmit_t> out_1;
 
 	distribute(out, out_0, out_1, device_addr);
-#ifdef C_SIM
 	if (device_addr == 0) {
+#ifdef C_SIM
 		device(out_0, in);
+#endif
 	}
 	else if (device_addr == 1) {
+#ifdef C_SIM
 		device(out_1, in);
-	}
 #endif
+	}
 }
 //[/pw]
 

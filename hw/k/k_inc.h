@@ -10,7 +10,7 @@
         #include <hls_stream.h>
 
         float k (data_t & point0, data_t & point1);
-        void k (data_t & point0, data_t & point1, hls::stream<data_t> & data,
+        void k (data_t & point0, data_t & point1, hls::stream<data_t> & data_fifo,
         		hls::stream<float> & k0, hls::stream<float> & k1);
 
     #else

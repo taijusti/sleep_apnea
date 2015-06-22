@@ -4,6 +4,7 @@
 #define COMMON_H
 
     #define FULL_INTEG
+   // #define C_SIM
 
     #define ABS(a) ((a) < 0 ? -(a) : (a))
     #define MAX(a,b) ((a) > (b) ? (a) : (b))
@@ -16,7 +17,7 @@
     #define EPSILON (0.001)
 
     #ifdef FULL_INTEG
-        #define PARTITIONS (2)
+        #define PARTITIONS (1)
         #define PARTITION_ELEMENTS (ELEMENTS / PARTITIONS)
     #endif
 
@@ -24,7 +25,7 @@
     #define COMMAND_GET_POINT             (1)
     #define COMMAND_SET_POINT_0           (2)
     #define COMMAND_SET_POINT_1           (3)
-    #define COMMAND_SET_E                 (4)
+    #define COMMAND_SET_TARGET_E          (4)
     #define COMMAND_GET_E                 (5)
     #define COMMAND_GET_KKT               (6)
     #define COMMAND_GET_DELTA_E           (7)
@@ -33,6 +34,14 @@
 	#define COMMAND_SET_DELTA_B           (10)
     #define COMMAND_GET_ALPHA             (11)
     #define COMMAND_SET_ALPHA             (12)
+
+    // TODO: commands from here on down are for debug
+    #define COMMAND_GET_DELTA_B           (13)
+    #define COMMAND_GET_Y1_ALPHA1_PRODUCT (14)
+    #define COMMAND_GET_Y2_ALPHA2_PRODUCT (15)
+    #define COMMAND_GET_POINT_0           (16)
+    #define COMMAND_GET_POINT_1           (17)
+    #define COMMAND_GET_TARGET_E          (18)
 
     #ifdef FULL_INTEG
     	#include <stdint.h>
@@ -56,13 +65,11 @@
         void send(int32_t i, hls::stream<transmit_t> &fifo);
         void send(uint32_t ui, hls::stream<transmit_t> &fifo);
         void send(bool y, hls::stream<transmit_t> &fifo);
-        //void send(fixed_t &f, hls::stream<transmit_t> &fifo);
         void send(float f, hls::stream<transmit_t> &fifo);
         void send(data_t &f, hls::stream<transmit_t> &fifo);
         void recv(int32_t &i, hls::stream<transmit_t> &fifo);
         void recv(uint32_t &ui, hls::stream<transmit_t> &fifo);
         void recv(bool &y, hls::stream<transmit_t> &fifo);
-        //void recv(fixed_t &f, hls::stream<transmit_t> &fifo);
         void recv(float &f, hls::stream<transmit_t> &fifo);
         void recv(data_t &f, hls::stream<transmit_t> &fifo);
 

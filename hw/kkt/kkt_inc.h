@@ -6,9 +6,8 @@
 
     #ifdef FULL_INTEG
         #include <hls_stream.h>
-        void kkt(hls::stream<float> & alpha, hls::stream<bool> & y,
-                hls::stream<float> & e_fifo, hls::stream<uint32_t> & kkt_bram,
-                uint32_t & kkt_violators);
+        void kkt(hls::stream<float> & alpha_fifo, hls::stream<bool> & y_fifo,
+                hls::stream<float> & e_fifo, uint32_t kkt_bram[ELEMENTS]);
 
     #else
         void kkt(float alpha[ELEMENTS], bool y [ELEMENTS], float e_fifo[ELEMENTS],

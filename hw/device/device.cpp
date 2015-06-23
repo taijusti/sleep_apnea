@@ -34,6 +34,28 @@ static void init_device(data_t data [ELEMENTS], hls::stream<transmit_t> & in,
     }
 }
 
+//[pw]
+static void init_last_device(data_t data [ELEMENTS], hls::stream<transmit_t> & in,
+        bool y [ELEMENTS], float e_bram [ELEMENTS], float alpha [ELEMENTS]) {
+    #pragma HLS INLINE
+    #pragma HLS PIPELINE
+
+    uint32_t i;
+    uint32_t j;
+
+    // initialize the BRAMs
+    for (i = 0; i < (ELEMENTS - NUM_DEVICES_LESS_1*(ELEMENTS/NUM_DEVICES)); i++) {
+        for (j = 0; j < DIMENSIONS; j++) {
+             recv(data[i].dim[j], in);
+        }
+
+        recv(y[i], in);
+        e_bram[i] = y[i] ? -1 : 1; // note: e = -y
+        alpha[i] = 0;
+    }
+}
+//[/pw]
+
 static void kkt_pipeline (data_t & point1, data_t & point2, hls::stream<data_t> & data_fifo,
         hls::stream<float> & e_bram_in_fifo, hls::stream<float> & e_bram_out_fifo,
         hls::stream<float> & alpha_fifo, hls::stream<bool> & y_fifo,
@@ -165,6 +187,18 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
             target_e = 0;
 
             init_device(data, in, y, e_bram, alpha);
+
+            point1 = data[0];
+            point2 = data[1];
+            break;
+
+        case COMMAND_INIT_DATA_LAST_DEVICE:
+            y1_delta_alpha1_product = 0;
+            y2_delta_alpha2_product = 0;
+            delta_b = 0;
+            target_e = 0;
+
+            init_last_device(data, in, y, e_bram, alpha);
 
             point1 = data[0];
             point2 = data[1];

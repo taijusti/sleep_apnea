@@ -20,6 +20,7 @@
     #define PARTITIONS (2)
     #define PARTITION_ELEMENTS (ELEMENTS / PARTITIONS)
     #define NUM_DEVICES (2)
+    #define NUM_DEVICES_LESS_1 (NUM_DEVICES - 1)
 
     #define COMMAND_INIT_DATA             (0)
     #define COMMAND_GET_POINT             (1)
@@ -34,6 +35,7 @@
 	#define COMMAND_SET_DELTA_B           (10)
     #define COMMAND_GET_ALPHA             (11)
     #define COMMAND_SET_ALPHA             (12)
+    #define COMMAND_INIT_DATA_LAST_DEVICE (50)
 
     // TODO: commands from here on down are for debug
     #define COMMAND_GET_DELTA_B           (13)

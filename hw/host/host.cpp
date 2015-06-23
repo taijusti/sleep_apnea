@@ -191,7 +191,7 @@ uint32_t ChooseDevice(uint32_t idx) {
 	// idx 64 - 127 will be assigned to Device 1
 	uint32_t DeviceID = idx / (ELEMENTS/NUM_DEVICES);
 
-	// Handle extra (odd number of) point. e.g. 129 points, idx 128 will also be assigned to Device 1
+	// Handle remaining points. e.g. 129 points, idx 128 will also be assigned to Device 1
 	DeviceID = (DeviceID == NUM_DEVICES) ? (DeviceID - 1): DeviceID;
 	return DeviceID;
 }
@@ -360,15 +360,25 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
     // initialize device(s)
     // TODO: overwrite when we figure out how the host FPGA
     // is going to accept data
-    for (k = 0; k < NUM_DEVICES; k++) { //pw
+    for (k = 0; k < NUM_DEVICES_LESS_1; k++) { //pw
         send(COMMAND_INIT_DATA, out);
         //for (i = 0; i < ELEMENTS; i++) {
         for (i = k*(ELEMENTS/NUM_DEVICES); i < (k+1)*(ELEMENTS/NUM_DEVICES); i++) { //pw
             send(data[i], out);
             send(y[i], out);
         }
-        callDevice(in, out, i); //pw
+        callChosenDevice(in, out, k); //pw
     }
+
+    //initialize the last device which hold the remaining data points
+    send(COMMAND_INIT_DATA_LAST_DEVICE, out);
+    for (i = NUM_DEVICES_LESS_1*(ELEMENTS/NUM_DEVICES); i < ELEMENTS; i++)
+    {
+    	send(data[i], out);
+    	send(y[i], out);
+    }
+    callChosenDevice(in, out, NUM_DEVICES_LESS_1);
+
     for (i = 0; i < ELEMENTS; i++) {
         alpha[i] = 0;
     }

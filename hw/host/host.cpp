@@ -200,11 +200,13 @@ static void getPoint(uint32_t idx, data_t & point, bool & y, float & alpha, floa
 #pragma HLS INLINE off
     transmit_t temp;
     uint32_t i;
+    uint32_t device_idx = idx % DIV_ELEMENTS;
 
     // send the command to get the point
     temp.ui = COMMAND_GET_POINT;
     out.write(temp);
-    temp.ui = idx;
+    //temp.ui = idx;
+    temp.ui = device_idx;
     out.write(temp);
 
     // wait for device to respond
@@ -227,8 +229,10 @@ static void getPoint(uint32_t idx, data_t & point, bool & y, float & alpha, floa
     alpha = (in.read().i * 1.0) / 65536;
 }
 
-static void getKkt(uint32_t & kkt_violators, uint32_t kktViol [ELEMENTS],
-        hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
+static void getKkt(uint32_t & kkt_violators, uint32_t kktViol [DIV_ELEMENTS],
+        hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, uint32_t device_addr) {
+//static void getKkt(uint32_t & kkt_violators, uint32_t kktViol [ELEMENTS],
+//        hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
 #pragma HLS INLINE off
 
     uint32_t i, j;
@@ -251,26 +255,24 @@ static void getKkt(uint32_t & kkt_violators, uint32_t kktViol [ELEMENTS],
         kktViol[i] = temp.ui;
     }
 */
-    for (j = 0; j < NUM_DEVICES; j++) {
+//    for (j = 0; j < NUM_DEVICES; j++) {
     	temp.ui = COMMAND_GET_KKT;
     	out.write(temp);
-    	callTargetDevice(in,out,j);
+    	callTargetDevice(in,out,device_addr);
     	ap_wait();
     	in.read(temp);
     	kkt_violators = temp.ui;
 
-
     	if (kkt_violators == 0) {
-    		//return;
-    		continue;
+    		return;
     	}
 
     	for (i = 0; i < kkt_violators; i++) {
     		in.read(temp);
-    		kktViol[i + j*NUM_DEVICES] = temp.ui;
+    		kktViol[i] = temp.ui;
     	}
 
-    }
+//    }
 }
 
 static void getMaxDeltaE(float err2, float & max_delta_e, uint32_t & point1_idx,
@@ -314,6 +316,7 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
     uint32_t i, j, k;
     uint32_t kkt_violators = 0;
     uint32_t cur_kkt_violator = 0;
+    uint32_t device_kkt_violators = 0;
     uint32_t temp;
     data_t point1;
     #pragma HLS ARRAY_PARTITION variable=point1.dim complete dim=1
@@ -326,9 +329,11 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
     #pragma HLS ARRAY_PARTITION variable=point2.dim dim=1
     bool y2;
     uint32_t point2_idx;
+    uint32_t device_point2_idx;
     uint32_t point2_device;
     float err2;
     uint32_t kktViol[ELEMENTS];
+    uint32_t device_kktViol[NUM_DEVICES][DIV_ELEMENTS];
     float max_delta_e;
     float device_max_delta_e;
     uint32_t max_delta_e_idx;
@@ -365,6 +370,31 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
     	}
     	//callDevice(in, out);
     	callTargetDevice(in, out, k);
+
+    	// Initialize point1 and point2 for all device(s)
+    	if (k == 0) {
+    		send(COMMAND_GET_POINT_1, out);
+    		callTargetDevice(in, out, k);
+    		ap_wait();
+    		//point1 = in.read();
+    		recv(point1, in);
+
+    		send(COMMAND_GET_POINT_2, out);
+    		callTargetDevice(in, out, k);
+    		ap_wait();
+    		//point2 = in.read();
+    		recv(point2, in);
+
+    	}
+    	else if (k != 0) {
+            send(COMMAND_SET_POINT_1, out);
+            send(point1, out);
+            callTargetDevice(in, out, k);
+
+            send(COMMAND_SET_POINT_2, out);
+            send(point2, out);
+            callTargetDevice(in, out, k);
+    	}
     }
 
     for (i = 0; i < ELEMENTS; i++) {
@@ -383,16 +413,32 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
         for (i = 0; i < ELEMENTS; i++) {
             // get device(s) to find KKT violators. choose the first KKT
             // violator as the first point and flush the FIFO
+        	kkt_violators = 0;
+        	for (k = 0; k < NUM_DEVICES; k++) {
+        		for (j = 0; j < DIV_ELEMENTS; j++) {
+        			device_kktViol[k][j] = 0;
+        		}
+        	}
         	if (tempChanged)
         	{
-        	    getKkt(kkt_violators, kktViol, in, out);
-        	    if (kkt_violators == 0) {
-        	        changed = false;
-        	        break;
-        	    }
+        		//getKkt(kkt_violators, kktViol, in, out);
+        		for (k = 0; k < NUM_DEVICES; k++) {
+        			getKkt(device_kkt_violators, device_kktViol[k], in, out, k);
+        			for (j = 0; j < device_kkt_violators; j++) {
+        				kktViol[j + kkt_violators] =  device_kktViol[k][j] + k*DIV_ELEMENTS;
+        			}
+        			kkt_violators += device_kkt_violators;
+        		}
+        		if (kkt_violators == 0) {
+        			changed = false;
+        			break;
+        		}
+
         	}
             point2_set = false;
             for (j = 0; j < kkt_violators; j++) {
+            //for (j = 0; j < ELEMENTS; j++) {
+
                 uint32_t temp;
                 temp = kktViol[j];
                 if (temp >= i && !point2_set) {
@@ -416,20 +462,21 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
             // get max delta e
             //getMaxDeltaE(err2, max_delta_e, point1_idx, in, out);
             for (j = 0; j < NUM_DEVICES; j++) {
-            	getMaxDeltaE(err2, max_delta_e, point1_idx, in, out, j);
+            	getMaxDeltaE(err2, device_max_delta_e, device_point1_idx, in, out, j);
+            	//point1_idx = device_point1_idx + j * DIV_ELEMENTS;
                 if (j == 0) {
                     max_delta_e = device_max_delta_e;
-                    point1_idx = device_point1_idx;
+                    point1_idx = device_point1_idx + j * DIV_ELEMENTS;
                 }
                 else if (device_max_delta_e > max_delta_e){
                     max_delta_e = device_max_delta_e;
-                    point1_idx = device_point1_idx;
+                    point1_idx = device_point1_idx + j * DIV_ELEMENTS;
                 }
             }
-
+            point1_device = point1_idx / DIV_ELEMENTS;
             // get all data related to the second point
             //getPoint(point1_idx, point1, y1, alpha1, err1, in, out);
-            getPoint(point1_idx, point2, y2, alpha2, err2, in, out, point1_device);
+            getPoint(point1_idx, point1, y1, alpha1, err1, in, out, point1_device);
 
             // at this point we have all the information we need for a single
             // iteration. compute the new alphas and b.
@@ -554,15 +601,21 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
                 callDevice(in, out);
 */
             	// update the alphas
+            	device_point1_idx = point1_idx % DIV_ELEMENTS;
+            	point1_device = point1_idx / DIV_ELEMENTS;
             	send(COMMAND_SET_ALPHA, out);
-            	send(point1_idx, out);
+            	//send(point1_idx, out);
+            	send(device_point1_idx, out);
             	send(alpha1, out);
-            	callTargetDevice(in, out, point1_idx);
+            	callTargetDevice(in, out, point1_device);
 
+            	device_point2_idx = point2_idx % DIV_ELEMENTS;
+            	point2_device = point2_idx / DIV_ELEMENTS;
             	send(COMMAND_SET_ALPHA, out);
-            	send(point2_idx, out);
+            	//send(point2_idx, out);
+            	send(device_point2_idx, out);
             	send(alpha2, out);
-            	callTargetDevice(in, out, point2_idx);
+            	callTargetDevice(in, out, point2_device);
 
                 for (k = 0; k < NUM_DEVICES; k++) {
                 	// b-cast to all FPGAs to set the first point
@@ -595,7 +648,6 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
                     send(delta_b, out);
                     callTargetDevice(in, out, k);
                 }
-
                 // for debug
                 iterations++;
                 send(iterations, debug);
@@ -632,7 +684,7 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
     		callTargetDevice(in, out, j);
     		ap_wait();
 
-    		alpha[i + j*NUM_DEVICES] = (in.read().i * 1.0) / 65536;
+    		alpha[i + j*DIV_ELEMENTS] = (in.read().i * 1.0) / 65536;
     	}
     }
 }

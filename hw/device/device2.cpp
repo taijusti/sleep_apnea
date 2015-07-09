@@ -121,7 +121,7 @@ static void kkt_pipeline_wrapper (data_t & point1, data_t & point2, data_t data 
     }
 }
 
-void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
+void device2(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
     #pragma HLS INTERFACE s_axilite port=return bundle=axi_debug
     #pragma HLS INTERFACE axis port=in
     #pragma HLS INTERFACE axis port=out

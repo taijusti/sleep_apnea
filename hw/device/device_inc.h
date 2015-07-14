@@ -13,7 +13,6 @@
     #include <hls_stream.h>
 
     void device(hls::stream<transmit_t> &in, hls::stream<transmit_t> &out);
-
 #ifdef C_SIM
     void device2(hls::stream<transmit_t> &in, hls::stream<transmit_t> &out);
 #endif

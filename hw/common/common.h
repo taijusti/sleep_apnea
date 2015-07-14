@@ -10,7 +10,7 @@
     #define ABS(a) ((a) < 0 ? -(a) : (a))
     #define MAX(a,b) ((a) > (b) ? (a) : (b))
     #define MIN(a,b) ((a) < (b) ? (a) : (b))
-    #define ELEMENTS (32)
+    #define ELEMENTS (256)
     #define DIMENSIONS (4)
 	#define C (5)
 	#define ERROR (0.001)
@@ -67,4 +67,24 @@
     void recv(bool &y, hls::stream<transmit_t> &fifo);
     void recv(float &f, hls::stream<transmit_t> &fifo);
     void recv(data_t &f, hls::stream<transmit_t> &fifo);
+    void broadcast_send(uint32_t ui, hls::stream<transmit_t> fifo[NUM_DEVICES]);
+    void broadcast_send(int32_t i, hls::stream<transmit_t> fifo[NUM_DEVICES]);
+    void broadcast_send(bool b, hls::stream<transmit_t> fifo[NUM_DEVICES]);
+    void broadcast_send(float f, hls::stream<transmit_t> fifo[NUM_DEVICES]);
+    void broadcast_send(data_t &point, hls::stream<transmit_t> fifo[NUM_DEVICES]);
+    void unicast_send(uint32_t ui, hls::stream<transmit_t> fifo[NUM_DEVICES], uint32_t device_addr);
+    void unicast_send(int32_t i, hls::stream<transmit_t> fifo[NUM_DEVICES], uint32_t device_addr);
+    void unicast_send(bool y, hls::stream<transmit_t> fifo[NUM_DEVICES], uint32_t device_addr);
+    void unicast_send(float f, hls::stream<transmit_t> fifo[NUM_DEVICES], uint32_t device_addr);
+    void unicast_send(data_t &point, hls::stream<transmit_t> fifo[NUM_DEVICES], uint32_t device_addr);
+    void broadcast_recv(uint32_t ui[NUM_DEVICES], hls::stream<transmit_t> fifo[NUM_DEVICES]);
+    void broadcast_recv(int32_t i[NUM_DEVICES], hls::stream<transmit_t> fifo[NUM_DEVICES]);
+    void broadcast_recv(bool b[NUM_DEVICES], hls::stream<transmit_t> fifo[NUM_DEVICES]);
+    void broadcast_recv(float f[NUM_DEVICES], hls::stream<transmit_t> fifo[NUM_DEVICES]);
+    void broadcast_recv(data_t point[NUM_DEVICES], hls::stream<transmit_t> fifo[NUM_DEVICES]);
+    void unicast_recv(uint32_t &ui, hls::stream<transmit_t> fifo[NUM_DEVICES], uint32_t device_addr);
+    void unicast_recv(int32_t &i, hls::stream<transmit_t> fifo[NUM_DEVICES], uint32_t device_addr);
+    void unicast_recv(bool &y, hls::stream<transmit_t> fifo[NUM_DEVICES], uint32_t device_addr);
+    void unicast_recv(float &f, hls::stream<transmit_t> fifo[NUM_DEVICES], uint32_t device_addr);
+    void unicast_recv(data_t &point, hls::stream<transmit_t> fifo[NUM_DEVICES], uint32_t device_addr);
 #endif

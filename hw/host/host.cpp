@@ -172,31 +172,28 @@ static bool take_step(data_t & point1, float & alpha1, bool y1, float err1,
     return true;
 }
 
-static void callDevice(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
+static void callDevice(hls::stream<transmit_t> in[NUM_DEVICES], hls::stream<transmit_t> out[NUM_DEVICES], uint32_t device_addr) {
 #ifdef C_SIM
-    device(out, in);
+	if (device_addr == 0) {
+		device(out[device_addr], in[device_addr]);
+	}
+	else if (device_addr == 1) {
+		device2(out[device_addr], in[device_addr]);
+	}
 #endif
 }
 
-static void callTargetDevice(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out,
-								uint32_t device_addr) {
-	//hls::stream<uint32_t> addr;
-	//addr.write(device_addr);
-
+static void callAllDevice(hls::stream<transmit_t> in[NUM_DEVICES], hls::stream<transmit_t> out[NUM_DEVICES]) {
 #ifdef C_SIM
-	if (device_addr == 0) {
-		device(out, in);
-	}
-	else if (device_addr == 1) {
-		device2(out, in);
+	uint32_t k;
+	for (k = 0; k < NUM_DEVICES; k++) {
+		callDevice(in, out, k);
 	}
 #endif
 }
 
 static void getPoint(uint32_t idx, data_t & point, bool & y, float & alpha, float & err,
-        hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, uint32_t device_addr) {
-//static void getPoint(uint32_t idx, data_t & point, bool & y, float & alpha, float & err,
-//        hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
+        hls::stream<transmit_t> in[NUM_DEVICES], hls::stream<transmit_t> out[NUM_DEVICES], uint32_t device_addr) {
 #pragma HLS INLINE off
     transmit_t temp;
     uint32_t i;
@@ -204,103 +201,76 @@ static void getPoint(uint32_t idx, data_t & point, bool & y, float & alpha, floa
 
     // send the command to get the point
     temp.ui = COMMAND_GET_POINT;
-    out.write(temp);
-    //temp.ui = idx;
+    out[device_addr].write(temp);
     temp.ui = device_idx;
-    out.write(temp);
+    out[device_addr].write(temp);
 
     // wait for device to respond
-    //callDevice(in, out);
-    callTargetDevice(in, out, device_addr);
+    callDevice(in, out, device_addr);
     ap_wait();
 
     // receive the point
     for (i = 0; i < DIMENSIONS; i++) {
-        point.dim[i] = (in.read().i * 1.0) / 65536;
+        point.dim[i] = (in[device_addr].read().i * 1.0) / 65536;
     }
 
     // receive the y
-    y = in.read().b;
+    y = in[device_addr].read().b;
 
     // receive the error
-    err = (in.read().i * 1.0) / 65536;
+    err = (in[device_addr].read().i * 1.0) / 65536;
 
     // receive the alpha
-    alpha = (in.read().i * 1.0) / 65536;
+    alpha = (in[device_addr].read().i * 1.0) / 65536;
 }
 
 static void getKkt(uint32_t & kkt_violators, uint32_t kktViol [DIV_ELEMENTS],
-        hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, uint32_t device_addr) {
-//static void getKkt(uint32_t & kkt_violators, uint32_t kktViol [ELEMENTS],
-//        hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
+        hls::stream<transmit_t> in[NUM_DEVICES], hls::stream<transmit_t> out[NUM_DEVICES], uint32_t device_addr) {
 #pragma HLS INLINE off
 
-    uint32_t i, j;
+    uint32_t i, j, k;
     transmit_t temp;
+    uint32_t bcast_recv_temp[NUM_DEVICES];
 
-/*
     temp.ui = COMMAND_GET_KKT;
-    out.write(temp);
-    callDevice(in,out);
+    out[device_addr].write(temp);
+    callDevice(in,out, device_addr);
     ap_wait();
-    in.read(temp);
+    in[device_addr].read(temp);
     kkt_violators = temp.ui;
 
     if (kkt_violators == 0) {
-        return;
+    	return;
     }
 
     for (i = 0; i < kkt_violators; i++) {
-        in.read(temp);
-        kktViol[i] = temp.ui;
+    	in[device_addr].read(temp);
+    	kktViol[i] = temp.ui;
     }
-*/
-//    for (j = 0; j < NUM_DEVICES; j++) {
-    	temp.ui = COMMAND_GET_KKT;
-    	out.write(temp);
-    	callTargetDevice(in,out,device_addr);
-    	ap_wait();
-    	in.read(temp);
-    	kkt_violators = temp.ui;
-
-    	if (kkt_violators == 0) {
-    		return;
-    	}
-
-    	for (i = 0; i < kkt_violators; i++) {
-    		in.read(temp);
-    		kktViol[i] = temp.ui;
-    	}
-
-//    }
 }
 
 static void getMaxDeltaE(float err2, float & max_delta_e, uint32_t & point1_idx,
-        hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, uint32_t device_addr) {
-//static void getMaxDeltaE(float err2, float & max_delta_e, uint32_t & point1_idx,
-//        hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
+        hls::stream<transmit_t> in[NUM_DEVICES], hls::stream<transmit_t> out[NUM_DEVICES], uint32_t device_addr) {
     transmit_t temp;
     temp.ui = COMMAND_SET_E;
-    out.write(temp);
+    out[device_addr].write(temp);
     temp.i = (int32_t)(err2 * 65536);
-    out.write(temp);
+    out[device_addr].write(temp);
 
     temp.ui = COMMAND_GET_DELTA_E;
-    out.write(temp);
+    out[device_addr].write(temp);
 
-    //callDevice(in, out);
-    //callDevice(in, out);
-    callTargetDevice(in, out, device_addr);
-    callTargetDevice(in, out, device_addr);
+    callDevice(in, out, device_addr);
+    callDevice(in, out, device_addr);
     ap_wait();
 
-    max_delta_e = (in.read().i * 1.0) / 65536;
-    point1_idx = in.read().ui;
+    max_delta_e = (in[device_addr].read().i * 1.0) / 65536;
+    point1_idx = in[device_addr].read().ui;
 }
 
 void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
-        bool y [ELEMENTS], hls::stream<transmit_t> & in,
-        hls::stream<transmit_t> & out, hls::stream<transmit_t> & debug) {
+        bool y [ELEMENTS], hls::stream<transmit_t> in[NUM_DEVICES],
+        hls::stream<transmit_t> out[NUM_DEVICES], hls::stream<transmit_t> & debug) {
     #pragma HLS INTERFACE s_axilite port=return bundle=axi_bus
     #pragma HLS INTERFACE axis port=out
     #pragma HLS INTERFACE axis port=in
@@ -351,49 +321,35 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
     // initialize device(s)
     // TODO: overwrite when we figure out how the host FPGA
     // is going to accept data
-/*    send(COMMAND_INIT_DATA, out);
-    for (i = 0; i < ELEMENTS; i++) {
-        send(data[i], out);
-        send(y[i], out);
-    }
-    for (i = 0; i < ELEMENTS; i++) {
-        alpha[i] = 0;
-    }
-    b = 0;
-    callDevice(in, out);
-*/
     for (k = 0; k < NUM_DEVICES; k++) {
-    	send(COMMAND_INIT_DATA, out);
-    	for (i = k*(ELEMENTS/NUM_DEVICES); i < (k+1)*(ELEMENTS/NUM_DEVICES); i++) {
-    		send(data[i], out);
-    		send(y[i], out);
+    	unicast_send(COMMAND_INIT_DATA, out, k);
+    	for (i = k*(DIV_ELEMENTS); i < (k+1)*(DIV_ELEMENTS); i++) {
+    		unicast_send(data[i], out, k);
+    		unicast_send(y[i], out, k);
     	}
-    	//callDevice(in, out);
-    	callTargetDevice(in, out, k);
+    	callDevice(in, out, k);
 
     	// Initialize point1 and point2 for all device(s)
     	if (k == 0) {
-    		send(COMMAND_GET_POINT_1, out);
-    		callTargetDevice(in, out, k);
+    		unicast_send(COMMAND_GET_POINT_1, out, k);
+    		callDevice(in, out, k);
     		ap_wait();
-    		//point1 = in.read();
-    		recv(point1, in);
+    		unicast_recv(point1, in, k);
 
-    		send(COMMAND_GET_POINT_2, out);
-    		callTargetDevice(in, out, k);
+    		unicast_send(COMMAND_GET_POINT_2, out, k);
+    		callDevice(in, out, k);
     		ap_wait();
-    		//point2 = in.read();
-    		recv(point2, in);
+    		unicast_recv(point2, in, k);
 
     	}
     	else if (k != 0) {
-            send(COMMAND_SET_POINT_1, out);
-            send(point1, out);
-            callTargetDevice(in, out, k);
+            unicast_send(COMMAND_SET_POINT_1, out, k);
+            unicast_send(point1, out, k);
+            callDevice(in, out, k);
 
-            send(COMMAND_SET_POINT_2, out);
-            send(point2, out);
-            callTargetDevice(in, out, k);
+            unicast_send(COMMAND_SET_POINT_2, out, k);
+            unicast_send(point2, out, k);
+            callDevice(in, out, k);
     	}
     }
 
@@ -401,7 +357,6 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
         alpha[i] = 0;
     }
     b = 0;
-
 
     // main loop of SMO
     // note: we intentionally do not utilize the data and alpha arrays here.
@@ -413,15 +368,14 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
         for (i = 0; i < ELEMENTS; i++) {
             // get device(s) to find KKT violators. choose the first KKT
             // violator as the first point and flush the FIFO
-        	kkt_violators = 0;
-        	for (k = 0; k < NUM_DEVICES; k++) {
-        		for (j = 0; j < DIV_ELEMENTS; j++) {
-        			device_kktViol[k][j] = 0;
-        		}
-        	}
         	if (tempChanged)
         	{
-        		//getKkt(kkt_violators, kktViol, in, out);
+            	kkt_violators = 0;
+            	for (k = 0; k < NUM_DEVICES; k++) {
+            		for (j = 0; j < DIV_ELEMENTS; j++) {
+            			device_kktViol[k][j] = 0;
+            		}
+            	}
         		for (k = 0; k < NUM_DEVICES; k++) {
         			getKkt(device_kkt_violators, device_kktViol[k], in, out, k);
         			for (j = 0; j < device_kkt_violators; j++) {
@@ -435,10 +389,9 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
         		}
 
         	}
-            point2_set = false;
-            for (j = 0; j < kkt_violators; j++) {
-            //for (j = 0; j < ELEMENTS; j++) {
 
+        	point2_set = false;
+            for (j = 0; j < kkt_violators; j++) {
                 uint32_t temp;
                 temp = kktViol[j];
                 if (temp >= i && !point2_set) {
@@ -456,14 +409,11 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
             }
 
             // get all data associated with the first point
-            //getPoint(point2_idx, point2, y2, alpha2, err2, in, out);
             getPoint(point2_idx, point2, y2, alpha2, err2, in, out, point2_device);
 
             // get max delta e
-            //getMaxDeltaE(err2, max_delta_e, point1_idx, in, out);
             for (j = 0; j < NUM_DEVICES; j++) {
             	getMaxDeltaE(err2, device_max_delta_e, device_point1_idx, in, out, j);
-            	//point1_idx = device_point1_idx + j * DIV_ELEMENTS;
                 if (j == 0) {
                     max_delta_e = device_max_delta_e;
                     point1_idx = device_point1_idx + j * DIV_ELEMENTS;
@@ -475,7 +425,6 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
             }
             point1_device = point1_idx / DIV_ELEMENTS;
             // get all data related to the second point
-            //getPoint(point1_idx, point1, y1, alpha1, err1, in, out);
             getPoint(point1_idx, point1, y1, alpha1, err1, in, out, point1_device);
 
             // at this point we have all the information we need for a single
@@ -489,44 +438,11 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
                                     point2, alpha2, y2, err2, b,
                                     point1_idx, point2_idx);
 
-/*            // Second point heuristic: Hierarchy #1 - loop over all non-bound alphas
-            j = start_offset = rand_int() % ELEMENTS;
-            while (!tempChanged && j < (start_offset + ELEMENTS)) {
-                point1_idx = j % ELEMENTS;
-                getPoint(point1_idx, point1, y1, alpha1, err1, in, out);
-
-                if (alpha1 != 0 && alpha1 != C) {
-                    alpha1_old = alpha1;
-                    tempChanged |= take_step(point1, alpha1, y1, err1,
-                                             point2, alpha2, y2, err2, b,
-                                             point1_idx, point2_idx);
-                }
-
-                j++;
-            } // end 2nd heuristic while
-
-            // Second point heuristic: Hierarchy #1 - loop over all non-bound alphas
-            j = start_offset = rand_int() % ELEMENTS;
-            while (!tempChanged && j < (start_offset + ELEMENTS)) {
-                point1_idx = j % ELEMENTS;
-                getPoint(point1_idx, point1, y1, alpha1, err1, in, out);
-
-                if (alpha1 == 0 || alpha1 == C) {
-                    alpha1_old = alpha1;
-                    tempChanged |= take_step(point1, alpha1, y1, err1,
-                                           point2, alpha2, y2, err2, b,
-                                           point1_idx, point2_idx);
-                }
-
-                j++;
-            } // end 2nd heuristic while
-*/
             // Second point heuristic: Hierarchy #1 - loop over all non-bound alphas
             j = start_offset = rand_int() % ELEMENTS;
             while (!tempChanged && j < (start_offset + ELEMENTS)) {
                 point1_idx = j % ELEMENTS;
                 point1_device = point1_idx / DIV_ELEMENTS;
-                //getPoint(point1_idx, point1, y1, alpha1, err1, in, out);
                 getPoint(point1_idx, point1, y1, alpha1, err1, in, out, point1_device);
 
                 if (alpha1 != 0 && alpha1 != C) {
@@ -544,7 +460,6 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
             while (!tempChanged && j < (start_offset + ELEMENTS)) {
                 point1_idx = j % ELEMENTS;
                 point1_device = point1_idx / DIV_ELEMENTS;
-                //getPoint(point1_idx, point1, y1, alpha1, err1, in, out);
                 getPoint(point1_idx, point1, y1, alpha1, err1, in, out, point1_device);
 
                 if (alpha1 == 0 || alpha1 == C) {
@@ -558,96 +473,51 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
             } // end 2nd heuristic while
 
             if (tempChanged) {
-/*                // update the alphas
-                send(COMMAND_SET_ALPHA, out);
-                send(point1_idx, out);
-                send(alpha1, out);
-                callDevice(in, out);
+            	// update the alphas
+            	device_point1_idx = point1_idx % DIV_ELEMENTS;
+            	point1_device = point1_idx / DIV_ELEMENTS;
+            	unicast_send(COMMAND_SET_ALPHA, out, point1_device);
+            	unicast_send(device_point1_idx, out, point1_device);
+            	unicast_send(alpha1, out, point1_device);
+            	callDevice(in, out, point1_device);
 
-                send(COMMAND_SET_ALPHA, out);
-                send(point2_idx, out);
-                send(alpha2, out);
-                callDevice(in, out);
+            	device_point2_idx = point2_idx % DIV_ELEMENTS;
+            	point2_device = point2_idx / DIV_ELEMENTS;
+            	unicast_send(COMMAND_SET_ALPHA, out, point2_device);
+            	unicast_send(device_point2_idx, out, point2_device);
+            	unicast_send(alpha2, out, point2_device);
+            	callDevice(in, out, point2_device);
 
-                // send all the information necessary to prep for the next iteration
                 // b-cast to all FPGAs to set the first point
-                send(COMMAND_SET_POINT_1, out);
-                send(point1, out);
-                callDevice(in, out);
+                broadcast_send(COMMAND_SET_POINT_1, out);
+                broadcast_send(point1, out);
+                callAllDevice(in, out);
 
                 // b-cast to all FPGAs to set the second point
-                send(COMMAND_SET_POINT_2, out);
-                send(point2, out);
-                callDevice(in, out);
+                broadcast_send(COMMAND_SET_POINT_2, out);
+                broadcast_send(point2, out);
+                callAllDevice(in, out);
 
                 // compute and broadcast the y1 * delta alpha1 product
                 delta_a = alpha1 - alpha1_old;
                 y_delta_alpha_product = (y1 ? 1 : -1) * delta_a;
-                send(COMMAND_SET_Y1_ALPHA1_PRODUCT, out);
-                send(y_delta_alpha_product, out);
-                callDevice(in, out);
+                broadcast_send(COMMAND_SET_Y1_ALPHA1_PRODUCT, out);
+                broadcast_send(y_delta_alpha_product, out);
+                callAllDevice(in, out);
 
                 // compute and broadcast the y2 * delta alpha2 product
                 delta_a = alpha2 - alpha2_old;
                 y_delta_alpha_product = (y2 ? 1 : -1) * delta_a;
-                send(COMMAND_SET_Y2_ALPHA2_PRODUCT, out);
-                send(y_delta_alpha_product, out);
-                callDevice(in, out);
+                broadcast_send(COMMAND_SET_Y2_ALPHA2_PRODUCT, out);
+                broadcast_send(y_delta_alpha_product, out);
+                callAllDevice(in, out);
 
                 // compute and broadcast delta b
                 delta_b = b_old - b;
-                send(COMMAND_SET_DELTA_B, out);
-                send(delta_b, out);
-                callDevice(in, out);
-*/
-            	// update the alphas
-            	device_point1_idx = point1_idx % DIV_ELEMENTS;
-            	point1_device = point1_idx / DIV_ELEMENTS;
-            	send(COMMAND_SET_ALPHA, out);
-            	//send(point1_idx, out);
-            	send(device_point1_idx, out);
-            	send(alpha1, out);
-            	callTargetDevice(in, out, point1_device);
+                broadcast_send(COMMAND_SET_DELTA_B, out);
+                broadcast_send(delta_b, out);
+                callAllDevice(in, out);
 
-            	device_point2_idx = point2_idx % DIV_ELEMENTS;
-            	point2_device = point2_idx / DIV_ELEMENTS;
-            	send(COMMAND_SET_ALPHA, out);
-            	//send(point2_idx, out);
-            	send(device_point2_idx, out);
-            	send(alpha2, out);
-            	callTargetDevice(in, out, point2_device);
-
-                for (k = 0; k < NUM_DEVICES; k++) {
-                	// b-cast to all FPGAs to set the first point
-                    send(COMMAND_SET_POINT_1, out);
-                    send(point1, out);
-                    callTargetDevice(in, out, k);
-
-                    // b-cast to all FPGAs to set the second point
-                    send(COMMAND_SET_POINT_2, out);
-                    send(point2, out);
-                    callTargetDevice(in, out, k);
-
-                    // compute and broadcast the y1 * delta alpha1 product
-                    delta_a = alpha1 - alpha1_old;
-                    y_delta_alpha_product = (y1 ? 1 : -1) * delta_a;
-                    send(COMMAND_SET_Y1_ALPHA1_PRODUCT, out);
-                    send(y_delta_alpha_product, out);
-                    callTargetDevice(in, out, k);
-
-                    // compute and broadcast the y2 * delta alpha2 product
-                    delta_a = alpha2 - alpha2_old;
-                    y_delta_alpha_product = (y2 ? 1 : -1) * delta_a;
-                    send(COMMAND_SET_Y2_ALPHA2_PRODUCT, out);
-                    send(y_delta_alpha_product, out);
-                    callTargetDevice(in, out, k);
-
-                    // compute and broadcast delta b
-                    delta_b = b_old - b;
-                    send(COMMAND_SET_DELTA_B, out);
-                    send(delta_b, out);
-                    callTargetDevice(in, out, k);
-                }
                 // for debug
                 iterations++;
                 send(iterations, debug);
@@ -660,31 +530,18 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
     // get the results
     // TODO: overwrite when we figure out how the host FPGA is going
     // to return the classifier
-/*    for (i = 0; i < ELEMENTS; i++) {
-        transmit_t temp;
-        temp.ui = COMMAND_GET_ALPHA;
-        out.write(temp);
-        temp.ui = i;
-        out.write(temp);
-
-        callDevice(in, out);
-        ap_wait();
-
-        alpha[i] = (in.read().i * 1.0) / 65536;
-    }
-*/
     for (j = 0; j < NUM_DEVICES; j++) {
     	for (i = 0; i < DIV_ELEMENTS; i++) {
     		transmit_t temp;
     		temp.ui = COMMAND_GET_ALPHA;
-    		out.write(temp);
+    		out[j].write(temp);
     		temp.ui = i;
-    		out.write(temp);
+    		out[j].write(temp);
 
-    		callTargetDevice(in, out, j);
+    		callDevice(in, out, j);
     		ap_wait();
 
-    		alpha[i + j*DIV_ELEMENTS] = (in.read().i * 1.0) / 65536;
+    		alpha[i + j*DIV_ELEMENTS] = (in[j].read().i * 1.0) / 65536;
     	}
     }
 }

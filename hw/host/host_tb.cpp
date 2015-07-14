@@ -270,8 +270,8 @@ int main(void) {
     float b_actual = 0;
     uint32_t i;
     uint32_t j;
-    hls::stream<transmit_t> in;
-    hls::stream<transmit_t> out;
+    hls::stream<transmit_t> in[NUM_DEVICES];
+    hls::stream<transmit_t> out[NUM_DEVICES];
     hls::stream<transmit_t> debug;
     FILE * fp = fopen("/home/taijusti/Documents/github/sleep_apnea/hw/host/svmguide1-t.txt", "r");
 
@@ -355,6 +355,11 @@ int main(void) {
 
     // try the actual
     host(data, alpha_actual, b_actual, y, in, out, debug);
+
+    for (i = 0; i < ELEMENTS; i++) {
+    	printf("Alpha_expected[%d]:%f, Alpha_actual[%d]:%f\n",i,alpha_expected[i],i,alpha_actual[i]);
+    }
+    printf("b_expected:%f, b_actual:%f\n",b_expected,b_actual);
 
     // check if the returned alphas matches within some error
     for (i = 0; i < ELEMENTS; i++) {

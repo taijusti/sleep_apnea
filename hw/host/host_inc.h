@@ -5,8 +5,11 @@
 #include "../common/common.h"
 
 void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
-        bool y [ELEMENTS], hls::stream<transmit_t> & in,
-        hls::stream<transmit_t> & out, hls::stream<transmit_t> & debug);
+        bool y [ELEMENTS], hls::stream<transmit_t> in[NUM_DEVICES],
+        hls::stream<transmit_t> out[NUM_DEVICES], hls::stream<transmit_t> & debug);
+//void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
+//        bool y [ELEMENTS], hls::stream<transmit_t> & in,
+//        hls::stream<transmit_t> & out, hls::stream<transmit_t> & debug);
 
 #ifdef C_SIM
 // exposed strictly for debug / c-simulation

@@ -203,7 +203,7 @@ static void getPoint(uint32_t idx, data_t & point, bool & y, float & alpha, floa
 
     // receive the point
     for (i = 0; i < DIMENSIONS; i++) {
-        unicast_recv(point.dim[i] /*temp.i*/, in, device_addr);
+        unicast_recv(point.dim[i], in, device_addr);
     }
 
     // receive the y

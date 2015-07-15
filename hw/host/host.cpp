@@ -133,11 +133,11 @@ static bool take_step(data_t & point1, float & alpha1, bool y1, float err1,
     // ABS macro cannot be used in fixed_t, explicitly coded instead
     float ABS_alpha2_diff = (alpha2NewClipped - alpha2);
     if (ABS_alpha2_diff < 0) {
-    	ABS_alpha2_diff *= -1;
+        ABS_alpha2_diff *= -1;
     }
 
     if (ABS_alpha2_diff < EPSILON * (alpha2NewClipped + alpha2 + EPSILON)) {
-    	return false;
+        return false;
     }
 
     // compute the new alpha1. just another equation copied from
@@ -174,36 +174,28 @@ static bool take_step(data_t & point1, float & alpha1, bool y1, float err1,
 
 static void callDevice(hls::stream<transmit_t> in[NUM_DEVICES], hls::stream<transmit_t> out[NUM_DEVICES], uint32_t device_addr) {
 #ifdef C_SIM
-	if (device_addr == 0) {
-		device(out[device_addr], in[device_addr]);
-	}
-	else if (device_addr == 1) {
-		device2(out[device_addr], in[device_addr]);
-	}
+    device(out[device_addr], in[device_addr]);
 #endif
 }
 
 static void callAllDevice(hls::stream<transmit_t> in[NUM_DEVICES], hls::stream<transmit_t> out[NUM_DEVICES]) {
 #ifdef C_SIM
-	uint32_t k;
-	for (k = 0; k < NUM_DEVICES; k++) {
-		callDevice(in, out, k);
-	}
+    uint32_t k;
+    for (k = 0; k < NUM_DEVICES; k++) {
+        callDevice(in, out, k);
+    }
 #endif
 }
 
 static void getPoint(uint32_t idx, data_t & point, bool & y, float & alpha, float & err,
         hls::stream<transmit_t> in[NUM_DEVICES], hls::stream<transmit_t> out[NUM_DEVICES], uint32_t device_addr) {
 #pragma HLS INLINE off
-    transmit_t temp;
     uint32_t i;
     uint32_t device_idx = idx % DIV_ELEMENTS;
 
     // send the command to get the point
-    temp.ui = COMMAND_GET_POINT;
-    out[device_addr].write(temp);
-    temp.ui = device_idx;
-    out[device_addr].write(temp);
+    unicast_send(COMMAND_GET_POINT, out, device_addr);
+    unicast_send(device_idx, out, device_addr);
 
     // wait for device to respond
     callDevice(in, out, device_addr);
@@ -211,61 +203,50 @@ static void getPoint(uint32_t idx, data_t & point, bool & y, float & alpha, floa
 
     // receive the point
     for (i = 0; i < DIMENSIONS; i++) {
-        point.dim[i] = (in[device_addr].read().i * 1.0) / 65536;
+        unicast_recv(point.dim[i] /*temp.i*/, in, device_addr);
     }
 
     // receive the y
-    y = in[device_addr].read().b;
+    unicast_recv(y, in, device_addr);
 
     // receive the error
-    err = (in[device_addr].read().i * 1.0) / 65536;
+    unicast_recv(err, in, device_addr);
 
     // receive the alpha
-    alpha = (in[device_addr].read().i * 1.0) / 65536;
+    unicast_recv(alpha, in, device_addr);
 }
 
 static void getKkt(uint32_t & kkt_violators, uint32_t kktViol [DIV_ELEMENTS],
         hls::stream<transmit_t> in[NUM_DEVICES], hls::stream<transmit_t> out[NUM_DEVICES], uint32_t device_addr) {
 #pragma HLS INLINE off
+    uint32_t i;
 
-    uint32_t i, j, k;
-    transmit_t temp;
-    uint32_t bcast_recv_temp[NUM_DEVICES];
-
-    temp.ui = COMMAND_GET_KKT;
-    out[device_addr].write(temp);
+    unicast_send(COMMAND_GET_KKT, out, device_addr);
     callDevice(in,out, device_addr);
     ap_wait();
-    in[device_addr].read(temp);
-    kkt_violators = temp.ui;
+    unicast_recv(kkt_violators, in, device_addr);
 
     if (kkt_violators == 0) {
-    	return;
+        return;
     }
 
     for (i = 0; i < kkt_violators; i++) {
-    	in[device_addr].read(temp);
-    	kktViol[i] = temp.ui;
+        unicast_recv(kktViol[i], in, device_addr);
     }
 }
 
 static void getMaxDeltaE(float err2, float & max_delta_e, uint32_t & point1_idx,
         hls::stream<transmit_t> in[NUM_DEVICES], hls::stream<transmit_t> out[NUM_DEVICES], uint32_t device_addr) {
-    transmit_t temp;
-    temp.ui = COMMAND_SET_E;
-    out[device_addr].write(temp);
-    temp.i = (int32_t)(err2 * 65536);
-    out[device_addr].write(temp);
-
-    temp.ui = COMMAND_GET_DELTA_E;
-    out[device_addr].write(temp);
+    unicast_send(COMMAND_SET_E, out, device_addr);
+    unicast_send(err2, out, device_addr);
+    unicast_send(COMMAND_GET_DELTA_E, out, device_addr);
 
     callDevice(in, out, device_addr);
     callDevice(in, out, device_addr);
     ap_wait();
 
-    max_delta_e = (in[device_addr].read().i * 1.0) / 65536;
-    point1_idx = in[device_addr].read().ui;
+    unicast_recv(max_delta_e, in, device_addr);
+    unicast_recv(point1_idx, in, device_addr);
 }
 
 void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
@@ -322,27 +303,27 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
     // TODO: overwrite when we figure out how the host FPGA
     // is going to accept data
     for (k = 0; k < NUM_DEVICES; k++) {
-    	unicast_send(COMMAND_INIT_DATA, out, k);
-    	for (i = k*(DIV_ELEMENTS); i < (k+1)*(DIV_ELEMENTS); i++) {
-    		unicast_send(data[i], out, k);
-    		unicast_send(y[i], out, k);
-    	}
-    	callDevice(in, out, k);
+        unicast_send(COMMAND_INIT_DATA, out, k);
+        for (i = k*(DIV_ELEMENTS); i < (k+1)*(DIV_ELEMENTS); i++) {
+            unicast_send(data[i], out, k);
+            unicast_send(y[i], out, k);
+        }
+        callDevice(in, out, k);
 
-    	// Initialize point1 and point2 for all device(s)
-    	if (k == 0) {
-    		unicast_send(COMMAND_GET_POINT_1, out, k);
-    		callDevice(in, out, k);
-    		ap_wait();
-    		unicast_recv(point1, in, k);
+        // Initialize point1 and point2 for all device(s)
+        if (k == 0) {
+            unicast_send(COMMAND_GET_POINT_1, out, k);
+            callDevice(in, out, k);
+            ap_wait();
+            unicast_recv(point1, in, k);
 
-    		unicast_send(COMMAND_GET_POINT_2, out, k);
-    		callDevice(in, out, k);
-    		ap_wait();
-    		unicast_recv(point2, in, k);
+            unicast_send(COMMAND_GET_POINT_2, out, k);
+            callDevice(in, out, k);
+            ap_wait();
+            unicast_recv(point2, in, k);
 
-    	}
-    	else if (k != 0) {
+        }
+        else if (k != 0) {
             unicast_send(COMMAND_SET_POINT_1, out, k);
             unicast_send(point1, out, k);
             callDevice(in, out, k);
@@ -350,7 +331,7 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
             unicast_send(COMMAND_SET_POINT_2, out, k);
             unicast_send(point2, out, k);
             callDevice(in, out, k);
-    	}
+        }
     }
 
     for (i = 0; i < ELEMENTS; i++) {
@@ -368,29 +349,29 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
         for (i = 0; i < ELEMENTS; i++) {
             // get device(s) to find KKT violators. choose the first KKT
             // violator as the first point and flush the FIFO
-        	if (tempChanged)
-        	{
-            	kkt_violators = 0;
-            	for (k = 0; k < NUM_DEVICES; k++) {
-            		for (j = 0; j < DIV_ELEMENTS; j++) {
-            			device_kktViol[k][j] = 0;
-            		}
-            	}
-        		for (k = 0; k < NUM_DEVICES; k++) {
-        			getKkt(device_kkt_violators, device_kktViol[k], in, out, k);
-        			for (j = 0; j < device_kkt_violators; j++) {
-        				kktViol[j + kkt_violators] =  device_kktViol[k][j] + k*DIV_ELEMENTS;
-        			}
-        			kkt_violators += device_kkt_violators;
-        		}
-        		if (kkt_violators == 0) {
-        			changed = false;
-        			break;
-        		}
+            if (tempChanged)
+            {
+                kkt_violators = 0;
+                for (k = 0; k < NUM_DEVICES; k++) {
+                    for (j = 0; j < DIV_ELEMENTS; j++) {
+                        device_kktViol[k][j] = 0;
+                    }
+                }
+                for (k = 0; k < NUM_DEVICES; k++) {
+                    getKkt(device_kkt_violators, device_kktViol[k], in, out, k);
+                    for (j = 0; j < device_kkt_violators; j++) {
+                        kktViol[j + kkt_violators] =  device_kktViol[k][j] + k*DIV_ELEMENTS;
+                    }
+                    kkt_violators += device_kkt_violators;
+                }
+                if (kkt_violators == 0) {
+                    changed = false;
+                    break;
+                }
 
-        	}
+            }
 
-        	point2_set = false;
+            point2_set = false;
             for (j = 0; j < kkt_violators; j++) {
                 uint32_t temp;
                 temp = kktViol[j];
@@ -404,7 +385,7 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
 
             // no kkt violators, exit!
             if (!point2_set) {
-            	tempChanged = false;
+                tempChanged = false;
                 break;
             }
 
@@ -413,7 +394,7 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
 
             // get max delta e
             for (j = 0; j < NUM_DEVICES; j++) {
-            	getMaxDeltaE(err2, device_max_delta_e, device_point1_idx, in, out, j);
+                getMaxDeltaE(err2, device_max_delta_e, device_point1_idx, in, out, j);
                 if (j == 0) {
                     max_delta_e = device_max_delta_e;
                     point1_idx = device_point1_idx + j * DIV_ELEMENTS;
@@ -473,20 +454,20 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
             } // end 2nd heuristic while
 
             if (tempChanged) {
-            	// update the alphas
-            	device_point1_idx = point1_idx % DIV_ELEMENTS;
-            	point1_device = point1_idx / DIV_ELEMENTS;
-            	unicast_send(COMMAND_SET_ALPHA, out, point1_device);
-            	unicast_send(device_point1_idx, out, point1_device);
-            	unicast_send(alpha1, out, point1_device);
-            	callDevice(in, out, point1_device);
+                // update the alphas
+                device_point1_idx = point1_idx % DIV_ELEMENTS;
+                point1_device = point1_idx / DIV_ELEMENTS;
+                unicast_send(COMMAND_SET_ALPHA, out, point1_device);
+                unicast_send(device_point1_idx, out, point1_device);
+                unicast_send(alpha1, out, point1_device);
+                callDevice(in, out, point1_device);
 
-            	device_point2_idx = point2_idx % DIV_ELEMENTS;
-            	point2_device = point2_idx / DIV_ELEMENTS;
-            	unicast_send(COMMAND_SET_ALPHA, out, point2_device);
-            	unicast_send(device_point2_idx, out, point2_device);
-            	unicast_send(alpha2, out, point2_device);
-            	callDevice(in, out, point2_device);
+                device_point2_idx = point2_idx % DIV_ELEMENTS;
+                point2_device = point2_idx / DIV_ELEMENTS;
+                unicast_send(COMMAND_SET_ALPHA, out, point2_device);
+                unicast_send(device_point2_idx, out, point2_device);
+                unicast_send(alpha2, out, point2_device);
+                callDevice(in, out, point2_device);
 
                 // b-cast to all FPGAs to set the first point
                 broadcast_send(COMMAND_SET_POINT_1, out);
@@ -521,27 +502,24 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
                 // for debug
                 iterations++;
                 send(iterations, debug);
-            }	// end if tempChanged
+            }    // end if tempChanged
 
             changed |= tempChanged;
-        }	// end for all ELEMENTS
-    } while(changed);	// end do...while changed
+        }    // end for all ELEMENTS
+    } while(changed);    // end do...while changed
 
     // get the results
     // TODO: overwrite when we figure out how the host FPGA is going
     // to return the classifier
     for (j = 0; j < NUM_DEVICES; j++) {
-    	for (i = 0; i < DIV_ELEMENTS; i++) {
-    		transmit_t temp;
-    		temp.ui = COMMAND_GET_ALPHA;
-    		out[j].write(temp);
-    		temp.ui = i;
-    		out[j].write(temp);
+        for (i = 0; i < DIV_ELEMENTS; i++) {
+            unicast_send(COMMAND_GET_ALPHA, out, j);
+            unicast_send(i, out, j);
 
-    		callDevice(in, out, j);
-    		ap_wait();
+            callDevice(in, out, j);
+            ap_wait();
 
-    		alpha[i + j*DIV_ELEMENTS] = (in[j].read().i * 1.0) / 65536;
-    	}
+            unicast_recv(alpha[i + j*DIV_ELEMENTS], in, j);
+        }
     }
 }

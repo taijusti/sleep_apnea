@@ -113,7 +113,7 @@ static void kkt_pipeline_wrapper (data_t & point1, data_t & point2, data_t data 
     for (i = 0; i < PARTITIONS; i++) {
         kkt_violators += local_kkt_violators[i];
     }
-    uint32_t temp;
+
     for (i = 0; i < PARTITIONS; i++) {
         for (j = 0; j < local_kkt_violators[i]; j++) {
             kkt_fifo.write(local_kkt_bram_fifo[i].read() + (i * PARTITION_ELEMENTS));

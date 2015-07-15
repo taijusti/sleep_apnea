@@ -356,11 +356,6 @@ int main(void) {
     // try the actual
     host(data, alpha_actual, b_actual, y, in, out, debug);
 
-    for (i = 0; i < ELEMENTS; i++) {
-    	printf("Alpha_expected[%d]:%f, Alpha_actual[%d]:%f\n",i,alpha_expected[i],i,alpha_actual[i]);
-    }
-    printf("b_expected:%f, b_actual:%f\n",b_expected,b_actual);
-
     // check if the returned alphas matches within some error
     for (i = 0; i < ELEMENTS; i++) {
         float expected_class = classify(alpha_expected, b_expected, data, y, data[i]);
@@ -368,13 +363,9 @@ int main(void) {
         bool expected_pred = expected_class >= 0;
         bool actual_pred = actual_class >= 0;
 
-        if (expected_pred == actual_pred) {
-            printf("TEST PASSED! prediction match %d %f %f\n", i, expected_class, actual_class);
-        }
-
         if (expected_pred != actual_pred) {
             printf("TEST FAILED! prediction mismatch %d %f %f\n", i, expected_class, actual_class);
-            //return 1;
+            return 1;
         }
     }
 

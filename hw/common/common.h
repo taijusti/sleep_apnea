@@ -2,7 +2,7 @@
 
 #ifndef COMMON_H
 #define COMMON_H
-    #define C_SIM
+    //#define C_SIM
 
     #include <stdint.h>
     #include <hls_stream.h>
@@ -10,7 +10,7 @@
     #define ABS(a) ((a) < 0 ? -(a) : (a))
     #define MAX(a,b) ((a) > (b) ? (a) : (b))
     #define MIN(a,b) ((a) < (b) ? (a) : (b))
-    #define ELEMENTS (256)
+    #define ELEMENTS (2048)
     #define DIMENSIONS (4)
 	#define C (5)
 	#define ERROR (0.001)
@@ -21,7 +21,6 @@
 	#define DIV_ELEMENTS (ELEMENTS/NUM_DEVICES)
 
     #define PARTITIONS (2)
-    //#define PARTITION_ELEMENTS (ELEMENTS / PARTITIONS)
     #define PARTITION_ELEMENTS (DIV_ELEMENTS / PARTITIONS)
 
     #define COMMAND_INIT_DATA             (0)

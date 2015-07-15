@@ -165,8 +165,6 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
 
             init_device(data, in, y, e_bram, alpha);
 
-            point1 = data[0];
-            point2 = data[1];
             break;
 
         case COMMAND_GET_KKT:

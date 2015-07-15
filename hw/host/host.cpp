@@ -309,30 +309,16 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
             unicast_send(y[i], out, k);
         }
         callDevice(in, out, k);
-
-        // Initialize point1 and point2 for all device(s)
-        if (k == 0) {
-            unicast_send(COMMAND_GET_POINT_1, out, k);
-            callDevice(in, out, k);
-            ap_wait();
-            unicast_recv(point1, in, k);
-
-            unicast_send(COMMAND_GET_POINT_2, out, k);
-            callDevice(in, out, k);
-            ap_wait();
-            unicast_recv(point2, in, k);
-
-        }
-        else if (k != 0) {
-            unicast_send(COMMAND_SET_POINT_1, out, k);
-            unicast_send(point1, out, k);
-            callDevice(in, out, k);
-
-            unicast_send(COMMAND_SET_POINT_2, out, k);
-            unicast_send(point2, out, k);
-            callDevice(in, out, k);
-        }
     }
+
+    // Initialize point1 and point2 for all device(s)
+    broadcast_send(COMMAND_SET_POINT_1, out);
+    broadcast_send(data[0], out);
+    callAllDevice(in, out);
+
+    broadcast_send(COMMAND_SET_POINT_2, out);
+    broadcast_send(data[1], out);
+    callAllDevice(in, out);
 
     for (i = 0; i < ELEMENTS; i++) {
         alpha[i] = 0;

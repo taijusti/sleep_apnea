@@ -64,29 +64,29 @@ static bool sw_kkt(float alpha, bool y, float e) {
 }
 
 int main(void) {
-    data_t data[ELEMENTS];
+    data_t data[DIV_ELEMENTS];
     data_t point1;
     data_t point2;
-    bool y[ELEMENTS];
+    bool y[DIV_ELEMENTS];
     float y1_delta_alpha1_product;
     float y2_delta_alpha2_product;
     float delta_b;
-    float e_bram[ELEMENTS];
-    float expected_e_bram[ELEMENTS];
+    float e_bram[DIV_ELEMENTS];
+    float expected_e_bram[DIV_ELEMENTS];
     float max_delta_e;
     float expected_max_delta_e;
     uint32_t max_delta_e_idx;
     uint32_t expected_max_delta_e_idx;
     float target_e;
-    float alpha[ELEMENTS];
-    float k1[ELEMENTS];
-    float k2[ELEMENTS];
-    uint32_t kkt_bram[ELEMENTS];
-    uint32_t expected_kkt_bram[ELEMENTS];
+    float alpha[DIV_ELEMENTS];
+    float k1[DIV_ELEMENTS];
+    float k2[DIV_ELEMENTS];
+    uint32_t kkt_bram[DIV_ELEMENTS];
+    uint32_t expected_kkt_bram[DIV_ELEMENTS];
     uint32_t kkt_violators;
     uint32_t expected_kkt_violators;
     uint32_t i, j;
-   // data_t* ddr_model = (data_t*)malloc(ELEMENTS*sizeof(data_t));
+   // data_t* ddr_model = (data_t*)malloc(DIV_ELEMENTS*sizeof(data_t));
     hls::stream<transmit_t> in;
     hls::stream<transmit_t> out;
 
@@ -98,7 +98,7 @@ int main(void) {
     y1_delta_alpha1_product = randFixed();
     y2_delta_alpha2_product = randFixed();
     delta_b = randFixed();
-    for (i = 0; i < ELEMENTS; i++) {
+    for (i = 0; i < DIV_ELEMENTS; i++) {
         y[i] = randFixed() > 0.5;
         e_bram[i] = y[i] ? -1 : 1;
         alpha[i] = randFixed();
@@ -115,12 +115,12 @@ int main(void) {
     target_e = randFixed();
 
     // calculate correct answers
-    for (i = 0; i < ELEMENTS; i++) {
+    for (i = 0; i < DIV_ELEMENTS; i++) {
         k1[i] = sw_k(&point1, data + i);
         k2[i] = sw_k(&point2, data + i);
     }
 
-    for (i = 0; i < ELEMENTS; i++) {
+    for (i = 0; i < DIV_ELEMENTS; i++) {
         expected_e_bram[i] = sw_e(e_bram[i], k1[i], k2[i],
                                   y1_delta_alpha1_product,
                                   y2_delta_alpha2_product,
@@ -128,7 +128,7 @@ int main(void) {
     }
 
     j = 0;
-    for (i = 0; i < ELEMENTS; i++) {
+    for (i = 0; i < DIV_ELEMENTS; i++) {
         if (!sw_kkt(alpha[i], y[i], expected_e_bram[i])) {
             expected_kkt_bram[j] = i;
             j++;
@@ -138,7 +138,7 @@ int main(void) {
 
     expected_max_delta_e = 0;
     max_delta_e_idx = 0;
-    for (i = 0; i < ELEMENTS; i++) {
+    for (i = 0; i < DIV_ELEMENTS; i++) {
     	float delta_e = expected_e_bram[i] - target_e;
     	if (delta_e < 0) {
     		delta_e *= -1;
@@ -156,7 +156,7 @@ int main(void) {
 
     // run the module, starting with initializing the device
     send(COMMAND_INIT_DATA, in);
-    for (i = 0; i < ELEMENTS; i++) {
+    for (i = 0; i < DIV_ELEMENTS; i++) {
         for (j = 0; j < DIMENSIONS; j++) {
             send(data[i].dim[j], in);
         }
@@ -179,7 +179,7 @@ int main(void) {
     device(in, out);
 
     //set the alphas
-    for (i = 0; i < ELEMENTS; i++) {
+    for (i = 0; i < DIV_ELEMENTS; i++) {
         send(COMMAND_SET_ALPHA, in);
         send(i, in);
         send(alpha[i], in);
@@ -227,7 +227,7 @@ int main(void) {
     ////////////////////////////////////////////////////////////
 
     // ask for all E values
-    for (i = 0; i < ELEMENTS; i++) {
+    for (i = 0; i < DIV_ELEMENTS; i++) {
         send(COMMAND_GET_E, in);
         send(i, in);
         device(in, out);
@@ -254,7 +254,7 @@ int main(void) {
     }
 
     // check if all the Es match up
-    for (i = 0; i < ELEMENTS; i++) {
+    for (i = 0; i < DIV_ELEMENTS; i++) {
         float lower = expected_e_bram[i] - float(TEST_ERROR);
         float upper = expected_e_bram[i] + float(TEST_ERROR);
         float temp = e_bram[i];

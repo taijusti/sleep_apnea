@@ -113,18 +113,21 @@ void broadcast_send(data_t &point, hls::stream<transmit_t> fifo[NUM_DEVICES]) {
 }
 
 void unicast_send(uint32_t ui, hls::stream<transmit_t> fifo[NUM_DEVICES], uint32_t device_addr) {
+#pragma HLS INLINE
     transmit_t temp;
     temp.ui = ui;
     fifo[device_addr].write(temp);
 }
 
 void unicast_send(int32_t i, hls::stream<transmit_t> fifo[NUM_DEVICES], uint32_t device_addr) {
+#pragma HLS INLINE
     transmit_t temp;
     temp.i = i;
     fifo[device_addr].write(temp);
 }
 
 void unicast_send(bool y, hls::stream<transmit_t> fifo[NUM_DEVICES], uint32_t device_addr) {
+#pragma HLS INLINE
     transmit_t temp;
     temp.b = y;
     fifo[device_addr].write(temp);
@@ -200,7 +203,7 @@ void unicast_recv(bool &y, hls::stream<transmit_t> fifo[NUM_DEVICES], uint32_t d
 }
 
 void unicast_recv(float &f, hls::stream<transmit_t> fifo[NUM_DEVICES], uint32_t device_addr) {
-#pragma HLS INLINE off
+#pragma HLS INLINE
     f = (fifo[device_addr].read().i * 1.0) / 65536;
 }
 

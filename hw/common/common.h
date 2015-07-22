@@ -10,7 +10,7 @@
     #define ABS(a) ((a) < 0 ? -(a) : (a))
     #define MAX(a,b) ((a) > (b) ? (a) : (b))
     #define MIN(a,b) ((a) < (b) ? (a) : (b))
-    #define ELEMENTS (2048)
+    #define ELEMENTS (16)
     #define DIMENSIONS (4)
 	#define C (5)
 	#define ERROR (0.001)

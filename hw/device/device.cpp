@@ -122,7 +122,7 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, volatil
 	#pragma HLS INTERFACE axis depth=2048 port=out
     #pragma HLS INTERFACE axis depth=2048 port=in
 	#endif
-	#pragma HLS INTERFACE s_axilite port=return bundle=axi_debug
+//	#pragma HLS INTERFACE s_axilite port=return bundle=axi_debug
     unsigned int i;
     unsigned int j;
 

@@ -3,8 +3,6 @@
 #include "../common/common.h"
 #include <stdint.h>
 
-//using namespace std;
-
 static float two_norm(data_t & point1, data_t & point2) {
 #pragma HLS INLINE
 
@@ -66,6 +64,7 @@ void k (data_t & point1, data_t & point2, hls::stream<data_t> & data_fifo,
     float temp1,temp2;
 
 
+    KengineLoop:
     for (i = 0; i < PARTITION_ELEMENTS; i++) {
         #pragma HLS PIPELINE II=4
 

@@ -15,7 +15,7 @@ using namespace std;
 
 static void init_device(volatile data_t* start, hls::stream<transmit_t> & in,
 		bool y [DIV_ELEMENTS], float e_bram [DIV_ELEMENTS], float alpha [DIV_ELEMENTS]) {
-#pragma HLS PIPELINE
+#pragma HLS DATAFLOW
 
 
     uint32_t i;
@@ -119,8 +119,8 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, volatil
  //   #pragma HLS INTERFACE s_axilite port=return bundle=axi_bus
 
     #ifndef C_SIM
-	#pragma HLS INTERFACE axis depth=2048 port=out
-    #pragma HLS INTERFACE axis depth=2048 port=in
+	#pragma HLS INTERFACE axis depth=1024 port=out
+    #pragma HLS INTERFACE axis depth=1024 port=in
 	#endif
 //	#pragma HLS INTERFACE s_axilite port=return bundle=axi_debug
     unsigned int i;

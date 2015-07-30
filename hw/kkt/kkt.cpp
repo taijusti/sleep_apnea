@@ -24,7 +24,7 @@ static bool isKKT(float alpha, bool y, float e) {
 }
 
 void kkt(hls::stream<float> & alpha_fifo, hls::stream<bool> & y_fifo,
-		hls::stream<float> & e_fifo, uint32_t kkt_bram[ELEMENTS]) {
+		hls::stream<float> & e_fifo, uint32_t kkt_bram[DIV_ELEMENTS]) {
     /*
     #pragma HLS INTERFACE s_axilite port=kkt_violators bundle=kkt_bus
     #pragma HLS INTERFACE axis port=alpha

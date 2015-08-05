@@ -121,17 +121,11 @@ void helper (unsigned int j, volatile data_t* start, data_t* x)
 void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, volatile data_t start[DIV_ELEMENTS*DIMENSIONS]) {
 #pragma HLS INTERFACE m_axi port=start
     #pragma HLS INTERFACE s_axilite port=return
- //   #pragma HLS INTERFACE m_axi depth=512 port=start
- //   #pragma HLS INTERFACE s_axilite port=return bundle=axi_bus
-
-    #ifndef C_SIM
 	#pragma HLS INTERFACE axis depth=1024 port=out
     #pragma HLS INTERFACE axis depth=1024 port=in
-	#endif
-//	#pragma HLS INTERFACE s_axilite port=return bundle=axi_debug
+
     unsigned int i;
     unsigned int j;
-
     static float alpha[DIV_ELEMENTS];
     static float e_bram[DIV_ELEMENTS];
     static bool y[DIV_ELEMENTS];
@@ -144,12 +138,7 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, volatil
     static data_t point1;
  ////   #pragma HLS ARRAY_PARTITION variable=point1.dim cyclic factor=2 dim=1
     uint32_t kkt_bram [DIV_ELEMENTS+1];
-
     static data_t x;
-    ////IBRAHIM FINAL
-	//#pragma HLS INTERFACE ap_bus depth=10000 port=start
-	//#pragma HLS RESOURCE core=AXI4M variable=start
-	//#pragma HLS RESOURCE core=AXI4LiteS variable=return metadata="-bus_bundle LITE"
 
     //Port start is assigned to an AXI4-master interface
     float max_delta_e;

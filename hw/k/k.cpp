@@ -7,6 +7,7 @@
 #include <hls_stream.h>
 #include "../common/common.h"
 #include <stdint.h>
+#include <math.h>
 
 static float two_norm(data_t & point1, data_t & point2) {
     #pragma HLS INLINE

@@ -217,23 +217,33 @@ static void getKkt(uint32_t & kkt_violators, uint32_t kktViol [DIV_ELEMENTS],
         hls::stream<transmit_t> in[NUM_DEVICES], hls::stream<transmit_t> out[NUM_DEVICES], uint32_t device_addr) {
     #pragma HLS INLINE off
     uint32_t i;
+    transmit_t t;
+    hls::stream<transmit_t> & in_temp = in[device_addr];
+    hls::stream<transmit_t> & out_temp = out[device_addr];
 
     // send the command to get KKT violators
-    unicast_send(COMMAND_GET_KKT, out, device_addr);
+    t.ui = COMMAND_GET_KKT;
+    out_temp.write(t);
+    //unicast_send(COMMAND_GET_KKT, out, device_addr);
 
     // wait for the device to respond
-    callDevice(in,out, device_addr);
+    callDevice(in, out, device_addr);
+    ap_wait();
     ap_wait();
 
     // get the result back
-    unicast_recv(kkt_violators, in, device_addr);
+    t = in_temp.read();
+    kkt_violators = t.ui;
+    //unicast_recv(kkt_violators, in, device_addr);
 
     if (kkt_violators == 0) {
         return;
     }
 
     for (i = 0; i < kkt_violators; i++) {
-        unicast_recv(kktViol[i], in, device_addr);
+        //unicast_recv(kktViol[i], in, device_addr);
+        t = in_temp.read();
+        kktViol[i] = t.ui;
     }
 }
 
@@ -335,26 +345,28 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
         for (i = 0; i < ELEMENTS; i++) {
             // get device(s) to find KKT violators. choose the first KKT
             // violator as the first point and flush the FIFO
-            if (tempChanged)
-            {
+            if (tempChanged) {
+                send(1, debug);
                 kkt_violators = 0;
                 for (k = 0; k < NUM_DEVICES; k++) {
                     for (j = 0; j < DIV_ELEMENTS; j++) {
                         device_kktViol[k][j] = 0;
                     }
                 }
+
                 for (k = 0; k < NUM_DEVICES; k++) {
                     getKkt(device_kkt_violators, device_kktViol[k], in, out, k);
+
                     for (j = 0; j < device_kkt_violators; j++) {
                         kktViol[j + kkt_violators] =  device_kktViol[k][j] + k*DIV_ELEMENTS;
                     }
                     kkt_violators += device_kkt_violators;
                 }
+
                 if (kkt_violators == 0) {
                     changed = false;
                     break;
                 }
-
             }
 
             point2_set = false;
@@ -376,9 +388,11 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
             }
 
             // get all data associated with the first point
+            send(2, debug);
             getPoint(point2_idx, point2, y2, alpha2, err2, in, out, point2_device);
 
             // get max delta e
+            send(3, debug);
             getMaxDeltaE(err2, max_delta_e, device_point1_idx, in, out, j);
             point1_idx = 0;
             for (j = 0; j < NUM_DEVICES; j++) {
@@ -391,6 +405,7 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
             point1_device = point1_idx / DIV_ELEMENTS;
 
             // get all data related to the second point
+            send(4, debug);
             getPoint(point1_idx, point1, y1, alpha1, err1, in, out, point1_device);
 
             // at this point we have all the information we need for a single
@@ -436,9 +451,10 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
                 }
 
                 j++;
-            } // end 2nd heuristic while
+            }
 
             if (tempChanged) {
+                send(5, debug);
                 // update the alphas
                 device_point1_idx = point1_idx % DIV_ELEMENTS;
                 point1_device = point1_idx / DIV_ELEMENTS;
@@ -486,13 +502,14 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
 
                 // for debug
                 iterations++;
-                send(iterations, debug);
+                //send(iterations, debug);
             }
 
             changed |= tempChanged;
         }
     } while(changed);
 
+    send(0xdeadbeef, debug);
     // get the results
     for (j = 0; j < NUM_DEVICES; j++) {
         for (i = 0; i < DIV_ELEMENTS; i++) {

@@ -1,4 +1,8 @@
+// Distributed SMO SVM
+// Ibrahim Ahmed, Justin Tai, Patrick Wu
 // ECE1373 Digital Systems Design for SoC
+// University of Toronto
+
 #include "../kkt/kkt_inc.h"
 #include "../common/common.h"
 #include <stdbool.h>

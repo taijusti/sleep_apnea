@@ -1,4 +1,7 @@
+// Distributed SMO SVM
+// Ibrahim Ahmed, Justin Tai, Patrick Wu
 // ECE1373 Digital Systems Design for SoC
+// University of Toronto
 
 #include "../device/device_inc.h"
 #include <stdbool.h>
@@ -116,6 +119,8 @@ void helper (unsigned int j, volatile data_t* start, data_t* x)
 
 //
 void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, volatile data_t start[DIV_ELEMENTS*DIMENSIONS]) {
+#pragma HLS INTERFACE m_axi port=start
+    #pragma HLS INTERFACE s_axilite port=return
  //   #pragma HLS INTERFACE m_axi depth=512 port=start
  //   #pragma HLS INTERFACE s_axilite port=return bundle=axi_bus
 
@@ -142,9 +147,9 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, volatil
 
     static data_t x;
     ////IBRAHIM FINAL
-	#pragma HLS INTERFACE ap_bus depth=10000 port=start
-	#pragma HLS RESOURCE core=AXI4M variable=start
-	#pragma HLS RESOURCE core=AXI4LiteS variable=return metadata="-bus_bundle LITE"
+	//#pragma HLS INTERFACE ap_bus depth=10000 port=start
+	//#pragma HLS RESOURCE core=AXI4M variable=start
+	//#pragma HLS RESOURCE core=AXI4LiteS variable=return metadata="-bus_bundle LITE"
 
     //Port start is assigned to an AXI4-master interface
     float max_delta_e;

@@ -1,25 +1,23 @@
+// Distributed SMO SVM
+// Ibrahim Ahmed, Justin Tai, Patrick Wu
+// ECE1373 Digital Systems Design for SoC
+// University of Toronto
+
 #include "../k/k_inc.h"
 #include <hls_stream.h>
 #include "../common/common.h"
 #include <stdint.h>
 
 static float two_norm(data_t & point1, data_t & point2) {
-#pragma HLS INLINE
-
-
-
-
-///	#pragma HLS PIPELINE
-//	#pragma HLS INLINE
+    #pragma HLS INLINE
 
     float temp = 0;
-	float difference;
+    float difference;
     uint32_t i;
-    kengineDim:
-    for (i = 0; i < DIMENSIONS; i++) {
-#pragma HLS PIPELINE
 
-//	#pragma HLS UNROLL
+    for (i = 0; i < DIMENSIONS; i++) {
+        #pragma HLS PIPELINE
+
         difference = point1.dim[i] - point2.dim[i];
         temp += difference * difference;
     }
@@ -28,15 +26,11 @@ static float two_norm(data_t & point1, data_t & point2) {
 }
 
 static float exponential(float & x) {
-//	#pragma HLS PIPELINE
-//	#pragma HLS INLINE
-	return expf(-x);
+    return expf(-x);
 }
 
 static float k_engine_help(data_t & point1, data_t & point2) {
-//	#pragma HLS PIPELINE
-	#pragma HLS INLINE
-
+    #pragma HLS INLINE
 
     float temp = two_norm(point1, point2);
     return exponential(temp);
@@ -49,22 +43,10 @@ float k (data_t & point1, data_t & point2) {
 
 // should be throughput optimized
 void k (data_t & point1, data_t & point2, hls::stream<data_t> & data_fifo,
-		hls::stream<float> & k1, hls::stream<float> & k2) {
-    /*
-    #pragma HLS INTERFACE s_axilite port=return bundle=k_bus
-    #pragma HLS INTERFACE axis port=data
-    #pragma HLS INTERFACE axis port=k2
-    #pragma HLS INTERFACE axis port=k1
-    #pragma HLS INTERFACE s_axilite port=point1 bundle=k_bus
-    #pragma HLS INTERFACE s_axilite port=point2 bundle=k_bus
-    */
-	//#pragma HLS INLINE
-
+        hls::stream<float> & k1, hls::stream<float> & k2) {
     int i;
     float temp1,temp2;
 
-
-    KengineLoop:
     for (i = 0; i < PARTITION_ELEMENTS; i++) {
         #pragma HLS PIPELINE II=4
 

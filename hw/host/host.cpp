@@ -1,4 +1,7 @@
+// Distributed SMO SVM
+// Ibrahim Ahmed, Justin Tai, Patrick Wu
 // ECE1373 Digital Systems Design for SoC
+// University of Toronto
 
 #include "../common/common.h"
 #include "host_inc.h"
@@ -129,14 +132,8 @@ static bool take_step(data_t & point1, float & alpha1, bool y1, float err1,
         }
     }
 
-    // check if alpha2 changes significantly
-    // ABS macro cannot be used in fixed_t, explicitly coded instead
-    float ABS_alpha2_diff = (alpha2NewClipped - alpha2);
-    if (ABS_alpha2_diff < 0) {
-        ABS_alpha2_diff *= -1;
-    }
-
-    if (ABS_alpha2_diff < EPSILON * (alpha2NewClipped + alpha2 + EPSILON)) {
+    // check if alpha2 changed significantly
+    if (ABS(alpha2NewClipped - alpha2) < EPSILON * (alpha2NewClipped + alpha2 + EPSILON)) {
         return false;
     }
 
@@ -218,12 +215,17 @@ static void getPoint(uint32_t idx, data_t & point, bool & y, float & alpha, floa
 
 static void getKkt(uint32_t & kkt_violators, uint32_t kktViol [DIV_ELEMENTS],
         hls::stream<transmit_t> in[NUM_DEVICES], hls::stream<transmit_t> out[NUM_DEVICES], uint32_t device_addr) {
-#pragma HLS INLINE off
+    #pragma HLS INLINE off
     uint32_t i;
 
+    // send the command to get KKT violators
     unicast_send(COMMAND_GET_KKT, out, device_addr);
+
+    // wait for the device to respond
     callDevice(in,out, device_addr);
     ap_wait();
+
+    // get the result back
     unicast_recv(kkt_violators, in, device_addr);
 
     if (kkt_violators == 0) {
@@ -262,7 +264,7 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
     #pragma HLS INTERFACE s_axilite port=y bundle=axi_bus
 
     bool changed;
-    bool tempChanged=true;
+    bool tempChanged = true;
     bool point2_set;
     uint32_t i, j, k;
     uint32_t kkt_violators = 0;
@@ -300,8 +302,6 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
     uint32_t iterations = 0;
 
     // initialize device(s)
-    // TODO: overwrite when we figure out how the host FPGA
-    // is going to accept data
     for (k = 0; k < NUM_DEVICES; k++) {
         unicast_send(COMMAND_INIT_DATA, out, k);
         for (i = k*(DIV_ELEMENTS); i < (k+1)*(DIV_ELEMENTS); i++) {
@@ -379,18 +379,17 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
             getPoint(point2_idx, point2, y2, alpha2, err2, in, out, point2_device);
 
             // get max delta e
+            getMaxDeltaE(err2, max_delta_e, device_point1_idx, in, out, j);
+            point1_idx = 0;
             for (j = 0; j < NUM_DEVICES; j++) {
                 getMaxDeltaE(err2, device_max_delta_e, device_point1_idx, in, out, j);
-                if (j == 0) {
-                    max_delta_e = device_max_delta_e;
-                    point1_idx = device_point1_idx + j * DIV_ELEMENTS;
-                }
-                else if (device_max_delta_e > max_delta_e){
+                if (device_max_delta_e > max_delta_e){
                     max_delta_e = device_max_delta_e;
                     point1_idx = device_point1_idx + j * DIV_ELEMENTS;
                 }
             }
             point1_device = point1_idx / DIV_ELEMENTS;
+
             // get all data related to the second point
             getPoint(point1_idx, point1, y1, alpha1, err1, in, out, point1_device);
 
@@ -420,7 +419,7 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
                 }
 
                 j++;
-            } // end 2nd heuristic while
+            }
 
             // Second point heuristic: Hierarchy #1 - loop over all non-bound alphas
             j = start_offset = rand_int() % ELEMENTS;
@@ -488,15 +487,13 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
                 // for debug
                 iterations++;
                 send(iterations, debug);
-            }    // end if tempChanged
+            }
 
             changed |= tempChanged;
-        }    // end for all ELEMENTS
-    } while(changed);    // end do...while changed
+        }
+    } while(changed);
 
     // get the results
-    // TODO: overwrite when we figure out how the host FPGA is going
-    // to return the classifier
     for (j = 0; j < NUM_DEVICES; j++) {
         for (i = 0; i < DIV_ELEMENTS; i++) {
             unicast_send(COMMAND_GET_ALPHA, out, j);

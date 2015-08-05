@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include <hls_stream.h>
 #include <stdio.h>
+#include <string.h>
 
 using namespace std;
 

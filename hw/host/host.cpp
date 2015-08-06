@@ -256,6 +256,7 @@ static void getMaxDeltaE(float err2, float & max_delta_e, uint32_t & point1_idx,
     callDevice(in, out, device_addr);
     callDevice(in, out, device_addr);
     ap_wait();
+    ap_wait();
 
     unicast_recv(max_delta_e, in, device_addr);
     unicast_recv(point1_idx, in, device_addr);
@@ -346,7 +347,6 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
             // get device(s) to find KKT violators. choose the first KKT
             // violator as the first point and flush the FIFO
             if (tempChanged) {
-                send(1, debug);
                 kkt_violators = 0;
                 for (k = 0; k < NUM_DEVICES; k++) {
                     for (j = 0; j < DIV_ELEMENTS; j++) {
@@ -356,7 +356,6 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
 
                 for (k = 0; k < NUM_DEVICES; k++) {
                     getKkt(device_kkt_violators, device_kktViol[k], in, out, k);
-
                     for (j = 0; j < device_kkt_violators; j++) {
                         kktViol[j + kkt_violators] =  device_kktViol[k][j] + k*DIV_ELEMENTS;
                     }
@@ -388,11 +387,9 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
             }
 
             // get all data associated with the first point
-            send(2, debug);
             getPoint(point2_idx, point2, y2, alpha2, err2, in, out, point2_device);
 
             // get max delta e
-            send(3, debug);
             getMaxDeltaE(err2, max_delta_e, device_point1_idx, in, out, j);
             point1_idx = 0;
             for (j = 0; j < NUM_DEVICES; j++) {
@@ -405,7 +402,6 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
             point1_device = point1_idx / DIV_ELEMENTS;
 
             // get all data related to the second point
-            send(4, debug);
             getPoint(point1_idx, point1, y1, alpha1, err1, in, out, point1_device);
 
             // at this point we have all the information we need for a single
@@ -454,7 +450,6 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
             }
 
             if (tempChanged) {
-                send(5, debug);
                 // update the alphas
                 device_point1_idx = point1_idx % DIV_ELEMENTS;
                 point1_device = point1_idx / DIV_ELEMENTS;
@@ -502,14 +497,13 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
 
                 // for debug
                 iterations++;
-                //send(iterations, debug);
+                send(iterations, debug);
             }
 
             changed |= tempChanged;
         }
     } while(changed);
 
-    send(0xdeadbeef, debug);
     // get the results
     for (j = 0; j < NUM_DEVICES; j++) {
         for (i = 0; i < DIV_ELEMENTS; i++) {

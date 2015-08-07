@@ -512,6 +512,7 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
 
             callDevice(in, out, j);
             ap_wait();
+            ap_wait();
 
             unicast_recv(alpha[i + j*DIV_ELEMENTS], in, j);
         }

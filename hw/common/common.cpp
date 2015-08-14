@@ -102,13 +102,13 @@ void broadcast_send(bool y, hls::stream<transmit_t> fifo[NUM_DEVICES]) {
     temp.b = y;
 
     for (k = 0; k < NUM_DEVICES; k++) {
-    	fifo[k].write(temp);
+        fifo[k].write(temp);
     }
 }
 
 void broadcast_send(float f, hls::stream<transmit_t> fifo[NUM_DEVICES]) {
 #pragma HLS INLINE
-	uint32_t k;
+    uint32_t k;
     transmit_t temp;
     temp.i = (int32_t)(f * 65536);
 
@@ -122,7 +122,7 @@ void broadcast_send(data_t &point, hls::stream<transmit_t> fifo[NUM_DEVICES]) {
     uint32_t i, k;
 
     for (k = 0; k < NUM_DEVICES; k++) {
-    	for (i = 0; i < DIMENSIONS; i++) {
+        for (i = 0; i < DIMENSIONS; i++) {
             unicast_send(point.dim[i], fifo, k);
         }
     }
@@ -194,10 +194,10 @@ void broadcast_recv(bool y[NUM_DEVICES], hls::stream<transmit_t> fifo[NUM_DEVICE
 
 void broadcast_recv(float f[NUM_DEVICES], hls::stream<transmit_t> fifo[NUM_DEVICES]) {
 #pragma HLS INLINE off
-	uint32_t k;
+    uint32_t k;
 
     for (k = 0; k < NUM_DEVICES; k++) {
-    	f[k] = (fifo[k].read().i * 1.0) / 65536;
+        f[k] = (fifo[k].read().i * 1.0) / 65536;
     }
 }
 
@@ -205,7 +205,7 @@ void broadcast_recv(data_t point[NUM_DEVICES], hls::stream<transmit_t> fifo[NUM_
 #pragma HLS INLINE
     uint32_t i, k;
     for (k = 0; k < NUM_DEVICES; k++) {
-    	for (i = 0; i < DIMENSIONS; i++) {
+        for (i = 0; i < DIMENSIONS; i++) {
             unicast_recv(point[k].dim[i], fifo, k);
         };
     }

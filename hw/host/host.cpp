@@ -215,7 +215,7 @@ static void getPoint(uint32_t idx, data_t & point, bool & y, float & alpha, floa
 
 static void getKkt(uint32_t & kkt_violators, uint32_t kktViol [DIV_ELEMENTS],
         hls::stream<transmit_t> in[NUM_DEVICES], hls::stream<transmit_t> out[NUM_DEVICES], uint32_t device_addr) {
-    #pragma HLS INLINE off
+#pragma HLS INLINE off
     uint32_t i;
     transmit_t t;
     hls::stream<transmit_t> & in_temp = in[device_addr];
@@ -224,7 +224,6 @@ static void getKkt(uint32_t & kkt_violators, uint32_t kktViol [DIV_ELEMENTS],
     // send the command to get KKT violators
     t.ui = COMMAND_GET_KKT;
     out_temp.write(t);
-    //unicast_send(COMMAND_GET_KKT, out, device_addr);
 
     // wait for the device to respond
     callDevice(in, out, device_addr);
@@ -234,14 +233,12 @@ static void getKkt(uint32_t & kkt_violators, uint32_t kktViol [DIV_ELEMENTS],
     // get the result back
     t = in_temp.read();
     kkt_violators = t.ui;
-    //unicast_recv(kkt_violators, in, device_addr);
 
     if (kkt_violators == 0) {
         return;
     }
 
     for (i = 0; i < kkt_violators; i++) {
-        //unicast_recv(kktViol[i], in, device_addr);
         t = in_temp.read();
         kktViol[i] = t.ui;
     }
@@ -265,14 +262,14 @@ static void getMaxDeltaE(float err2, float & max_delta_e, uint32_t & point1_idx,
 void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
         bool y [ELEMENTS], hls::stream<transmit_t> in[NUM_DEVICES],
         hls::stream<transmit_t> out[NUM_DEVICES], hls::stream<transmit_t> & debug) {
-    #pragma HLS INTERFACE s_axilite port=return bundle=axi_bus
-    #pragma HLS INTERFACE axis port=out
-    #pragma HLS INTERFACE axis port=in
-    #pragma HLS INTERFACE axis port=debug
-    #pragma HLS INTERFACE s_axilite port=b bundle=axi_bus
-    #pragma HLS INTERFACE s_axilite port=data bundle=axi_bus
-    #pragma HLS INTERFACE s_axilite port=alpha bundle=axi_bus
-    #pragma HLS INTERFACE s_axilite port=y bundle=axi_bus
+#pragma HLS INTERFACE s_axilite port=return bundle=axi_bus
+#pragma HLS INTERFACE axis port=out
+#pragma HLS INTERFACE axis port=in
+#pragma HLS INTERFACE axis port=debug
+#pragma HLS INTERFACE s_axilite port=b bundle=axi_bus
+#pragma HLS INTERFACE s_axilite port=data bundle=axi_bus
+#pragma HLS INTERFACE s_axilite port=alpha bundle=axi_bus
+#pragma HLS INTERFACE s_axilite port=y bundle=axi_bus
 
     bool changed;
     bool tempChanged = true;
@@ -390,8 +387,6 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
             getPoint(point2_idx, point2, y2, alpha2, err2, in, out, point2_device);
 
             // get max delta e
-            //getMaxDeltaE(err2, max_delta_e, device_point1_idx, in, out, j);
-            //point1_idx = 0;
             for (j = 0; j < NUM_DEVICES; j++) {
                 getMaxDeltaE(err2, device_max_delta_e, device_point1_idx, in, out, j);
                 if (j == 0) {

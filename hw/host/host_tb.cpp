@@ -270,8 +270,8 @@ int main(void) {
     float b_actual = 0;
     uint32_t i;
     uint32_t j;
-    hls::stream<transmit_t> in;
-    hls::stream<transmit_t> out;
+    hls::stream<transmit_t> in[NUM_DEVICES];
+    hls::stream<transmit_t> out[NUM_DEVICES];
     hls::stream<transmit_t> debug;
     FILE * fp = fopen("/home/taijusti/Documents/github/sleep_apnea/hw/host/svmguide1-t.txt", "r");
 

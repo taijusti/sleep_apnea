@@ -1,4 +1,7 @@
+// Distributed SMO SVM
+// Ibrahim Ahmed, Justin Tai, Patrick Wu
 // ECE1373 Digital Systems Design for SoC
+// University of Toronto
 
 #ifndef DEVICE_H
 #define DEVICE_H
@@ -11,21 +14,6 @@
     #include "../k/k_inc.h"
     #include <stdint.h>
 
-    #ifdef FULL_INTEG
-        #include <hls_stream.h>
-        void device(hls::stream<transmit_t> &in, hls::stream<transmit_t> &out, volatile data_t start[ELEMENTS*DIMENSIONS]);
-
-    #else
-        void device(data_t data [ELEMENTS], // TODO: remove
-                    data_t * point1,
-                    data_t * point2,
-                    bool y[ELEMENTS],
-                    float alpha[ELEMENTS], // TODO: remove
-                    float y1_delta_alpha1_product, // TODO: better way?
-                    float y2_delta_alpha2_product, // TODO: better way?
-                    float delta_b, // TODO: better way?
-                    float e_bram[ELEMENTS],
-                    float * max_delta_e,
-                    unsigned short kkt_bram [ELEMENTS], unsigned short * kkt_violators);
-    #endif
+    void device(hls::stream<transmit_t> &in, hls::stream<transmit_t> &out,
+            volatile data_t start[DIV_ELEMENTS*DIMENSIONS]);
 #endif

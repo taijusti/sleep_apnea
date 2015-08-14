@@ -1,4 +1,8 @@
+// Distributed SMO SVM
+// Ibrahim Ahmed, Justin Tai, Patrick Wu
 // ECE1373 Digital Systems Design for SoC
+// University of Toronto
+
 #include "../kkt/kkt_inc.h"
 #include "../common/common.h"
 #include <stdbool.h>
@@ -24,7 +28,7 @@ static bool isKKT(float alpha, bool y, float e) {
 }
 
 void kkt(hls::stream<float> & alpha_fifo, hls::stream<bool> & y_fifo,
-        hls::stream<float> & e_fifo, uint32_t kkt_bram[ELEMENTS]) {
+		hls::stream<float> & e_fifo, uint32_t kkt_bram[DIV_ELEMENTS]) {
     /*
     #pragma HLS INTERFACE s_axilite port=kkt_violators bundle=kkt_bus
     #pragma HLS INTERFACE axis port=alpha
@@ -41,13 +45,9 @@ void kkt(hls::stream<float> & alpha_fifo, hls::stream<bool> & y_fifo,
     // find and record KKT violators
     for (i = 0; i < PARTITION_ELEMENTS; i++) {
     #pragma HLS PIPELINE II=4
-        if (!isKKT(alpha_fifo.read(), y_fifo.read(), e_fifo.read())) {
-            kkt_bram[violator_ctr+1]=i;
+    	if (!isKKT(alpha_fifo.read(), y_fifo.read(), e_fifo.read())) {
+    		kkt_bram[violator_ctr+1]=i;
             violator_ctr++;
         }
-
-
-
-    }
     kkt_bram[0]=violator_ctr;
 }

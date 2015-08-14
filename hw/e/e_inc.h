@@ -7,7 +7,6 @@
 #define E_H
     #include "../common/common.h"
     #include <stdint.h>
-    #include <hls_stream.h>
 
     void e(float e_bram[DIV_ELEMENTS],
            hls::stream<float> & e_fifo, hls::stream<float> & k1,

@@ -13,7 +13,6 @@
     #include "../e/e_inc.h"
     #include "../k/k_inc.h"
     #include <stdint.h>
-    #include <hls_stream.h>
 
     void device(hls::stream<transmit_t> &in, hls::stream<transmit_t> &out,
             volatile data_t start[DIV_ELEMENTS*DIMENSIONS]);

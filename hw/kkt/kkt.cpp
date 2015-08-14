@@ -49,7 +49,5 @@ void kkt(hls::stream<float> & alpha_fifo, hls::stream<bool> & y_fifo,
     		kkt_bram[violator_ctr+1]=i;
             violator_ctr++;
         }
-    }
-
     kkt_bram[0]=violator_ctr;
 }

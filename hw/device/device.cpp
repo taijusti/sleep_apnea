@@ -53,8 +53,6 @@ static void kkt_pipeline (data_t & point0, data_t & point1, hls::stream<data_t> 
     k(point0, point1, data_fifo, k1_fifo, k2_fifo);
     e(e_bram,e_fifo, k1_fifo, k2_fifo,y1_delta_alpha1_product, y2_delta_alpha2_product, delta_b);
     kkt(alpha_fifo, y_fifo, e_fifo, kkt_bram_fifo);
-
-
 }
 
 void BRAMtoFIFO (hls::stream<data_t> & data_fifo, data_t data [DIV_ELEMENTS], hls::stream<bool> & y_fifo,
@@ -166,7 +164,6 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, volatil
             sendKKTviolVal:
             for (i = 1; i < kkt_bram[0]+1; i++) {
             #pragma HLS LOOP_TRIPCOUNT min=0 max=128
-
                 send(kkt_bram[i], out);
             }
             break;

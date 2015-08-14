@@ -15,7 +15,7 @@ static float two_norm(data_t & point1, data_t & point2) {
     float temp = 0;
     float difference;
     uint32_t i;
-
+    kengineDim:
     for (i = 0; i < DIMENSIONS; i++) {
         #pragma HLS PIPELINE
 
@@ -48,6 +48,7 @@ void k (data_t & point1, data_t & point2, hls::stream<data_t> & data_fifo,
     int i;
     float temp1,temp2;
 
+    KengineLoop:
     for (i = 0; i < PARTITION_ELEMENTS; i++) {
         #pragma HLS PIPELINE II=4
 

@@ -390,11 +390,15 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
             getPoint(point2_idx, point2, y2, alpha2, err2, in, out, point2_device);
 
             // get max delta e
-            getMaxDeltaE(err2, max_delta_e, device_point1_idx, in, out, j);
-            point1_idx = 0;
+            //getMaxDeltaE(err2, max_delta_e, device_point1_idx, in, out, j);
+            //point1_idx = 0;
             for (j = 0; j < NUM_DEVICES; j++) {
                 getMaxDeltaE(err2, device_max_delta_e, device_point1_idx, in, out, j);
-                if (device_max_delta_e > max_delta_e){
+                if (j == 0) {
+                    max_delta_e = device_max_delta_e;
+                    point1_idx = device_point1_idx + j * DIV_ELEMENTS;
+                }
+                else if (device_max_delta_e > max_delta_e){
                     max_delta_e = device_max_delta_e;
                     point1_idx = device_point1_idx + j * DIV_ELEMENTS;
                 }

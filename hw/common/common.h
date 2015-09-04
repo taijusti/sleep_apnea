@@ -6,15 +6,17 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+    #include <stdint.h>
+    #include <hls_stream.h>
+
     // uncomment this line for C-simulation. this define should
     // be commented out for synthesis
-    //#define C_SIM
-    #define FULL_INTEG
+    #define C_SIM
 
     #define ABS(a) ((a) < 0 ? -(a) : (a))
     #define MAX(a,b) ((a) > (b) ? (a) : (b))
     #define MIN(a,b) ((a) < (b) ? (a) : (b))
-    #define ELEMENTS (2048)
+    #define ELEMENTS (128)
     #define DIMENSIONS (4)
     #define C (5)
     #define ERROR (0.001)
@@ -24,7 +26,6 @@
     #define DIV_ELEMENTS (ELEMENTS/NUM_DEVICES)
     #define PARTITIONS (1)
     #define PARTITION_ELEMENTS (DIV_ELEMENTS / PARTITIONS)
-
 
     // regular commands used in compute
     #define COMMAND_INIT_DATA             (0)
@@ -50,43 +51,16 @@
     #define COMMAND_GET_POINT_2           (17)
     #define COMMAND_GET_TARGET_E          (18)
 
-    #ifdef FULL_INTEG
-    	#include <stdint.h>
-		#include <hls_stream.h>
-		#include <ap_fixed.h>
+    typedef union {
+        uint32_t ui;
+        int32_t i;
+        float f;
+        bool b;
+    } transmit_t;
 
-        //typedef ap_fixed<32, 4> fixed_t;
-
-		typedef union {
-			uint32_t ui;
-			int32_t i;
-			float f;
-			bool b;
-		} transmit_t;
-
-        typedef struct {
-            float dim [DIMENSIONS];
-        } data_t;
-
-        float dotProduct(data_t * point1, data_t * point2);
-        void send(int32_t i, hls::stream<transmit_t> &fifo);
-        void send(uint32_t ui, hls::stream<transmit_t> &fifo);
-        void send(bool y, hls::stream<transmit_t> &fifo);
-        void send(float f, hls::stream<transmit_t> &fifo);
-        void send(data_t &f, hls::stream<transmit_t> &fifo);
-        void recv(int32_t &i, hls::stream<transmit_t> &fifo);
-        void recv(uint32_t &ui, hls::stream<transmit_t> &fifo);
-        void recv(bool &y, hls::stream<transmit_t> &fifo);
-        void recv(float &f, hls::stream<transmit_t> &fifo);
-        void recv(data_t &f, hls::stream<transmit_t> &fifo);
-
-    #else
-        typedef struct {
-            float dim [DIMENSIONS];
-        } data_t;
-
-        float dotProduct(data_t * point1, data_t * point2);
-    #endif
+    typedef struct {
+        float dim [DIMENSIONS];
+    } data_t;
 
     void send(int32_t i, hls::stream<transmit_t> &fifo);
     void send(uint32_t ui, hls::stream<transmit_t> &fifo);

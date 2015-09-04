@@ -15,5 +15,5 @@
     #include <stdint.h>
 
     void device(hls::stream<transmit_t> &in, hls::stream<transmit_t> &out,
-            volatile data_t start[DIV_ELEMENTS*DIMENSIONS]);
+            volatile data_t start[DIV_ELEMENTS]);
 #endif

@@ -35,7 +35,7 @@ static void init_device(volatile data_t* start, hls::stream<transmit_t> & in,
         e_bram[i] = y[i] ? -1 : 1; // note: e = -y
         alpha[i] = 0;
     }
-    memcpy((data_t*)start,(data_t*)(data),DIV_ELEMENTS*sizeof(data_t));
+    memcpy((data_t *)start, (data_t *)(data), DIV_ELEMENTS * sizeof(data_t));
 }
 
 static void kkt_pipeline (data_t & point0, data_t & point1, hls::stream<data_t> & data_fifo,
@@ -43,7 +43,7 @@ static void kkt_pipeline (data_t & point0, data_t & point1, hls::stream<data_t> 
         hls::stream<float> & alpha_fifo, hls::stream<bool> & y_fifo,
         uint32_t kkt_bram_fifo[DIV_ELEMENTS], float y1_delta_alpha1_product, float y2_delta_alpha2_product,
         float delta_b) {
-    #pragma HLS INLINE
+#pragma HLS INLINE
 
     hls::stream<float> k1_fifo;
     hls::stream<float> k2_fifo;
@@ -103,14 +103,9 @@ void helper (unsigned int j, volatile data_t* start, data_t* x)
 #endif
 }
 
-
-//
-void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, volatile data_t start[DIV_ELEMENTS*DIMENSIONS]) {
-#ifndef C_SIM
-    #pragma HLS INTERFACE axis depth=2048 port=out
-    #pragma HLS INTERFACE axis depth=2048 port=in
-#endif
-	//Port start is assigned to an AXI4-master interface
+void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, volatile data_t start[DIV_ELEMENTS]) {
+#pragma HLS INTERFACE axis depth=2048 port=out
+#pragma HLS INTERFACE axis depth=2048 port=in
 #pragma HLS INTERFACE ap_bus depth=10000 port=start
 #pragma HLS RESOURCE core=AXI4M variable=start
 #pragma HLS RESOURCE core=AXI4LiteS variable=return metadata="-bus_bundle LITE"
@@ -124,15 +119,15 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, volatil
     static float y2_delta_alpha2_product;
     static float delta_b;
     static float target_e;
-    static data_t point0;
     static data_t point1;
-    uint32_t kkt_bram [DIV_ELEMENTS+1];
+    static data_t point2;
+    uint32_t kkt_bram [DIV_ELEMENTS + 1];
     static data_t x;
-
     float max_delta_e;
     uint32_t max_delta_e_idx;
     uint32_t command;
     transmit_t temp;
+
 #ifndef C_SIM
     while(1) {
 #endif
@@ -148,12 +143,12 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, volatil
 
             init_device(start, in, y, e_bram, alpha);
 
-            helper(0,start,&point0);
-            helper(1,start,&point1);
+            helper(0, start, &point1);
+            helper(1, start, &point2);
             break;
 
         case COMMAND_GET_KKT:
-            kkt_pipeline_wrapper(point0, point1, start, e_bram, alpha, y,
+            kkt_pipeline_wrapper(point1, point2, start, e_bram, alpha, y,
                     kkt_bram, y1_delta_alpha1_product,
                     y2_delta_alpha2_product, delta_b);
 
@@ -161,9 +156,7 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, volatil
             // send off the # of kkt violators
             send(kkt_bram[0], out);
 
-            sendKKTviolVal:
             for (i = 1; i < kkt_bram[0]+1; i++) {
-            #pragma HLS LOOP_TRIPCOUNT min=0 max=128
                 send(kkt_bram[i], out);
             }
             break;
@@ -187,11 +180,11 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, volatil
             break;
 
         case COMMAND_SET_POINT_1:
-            recv(point0, in);
+            recv(point1, in);
             break;
 
         case COMMAND_SET_POINT_2:
-            recv(point1, in);
+            recv(point2, in);
             break;
 
         case COMMAND_GET_E:
@@ -239,11 +232,11 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, volatil
             break;
 
         case COMMAND_GET_POINT_1:
-            send(point0, out);
+            send(point1, out);
             break;
 
         case COMMAND_GET_POINT_2:
-            send(point1, out);
+            send(point2, out);
             break;
 
         case COMMAND_GET_TARGET_E:

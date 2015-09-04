@@ -273,7 +273,6 @@ int main(void) {
     hls::stream<transmit_t> in[NUM_DEVICES];
     hls::stream<transmit_t> out[NUM_DEVICES];
     hls::stream<transmit_t> debug;
-    FILE * fp = fopen("/home/taijusti/Documents/github/sleep_apnea/hw/host/svmguide1-t.txt", "r");
 
     // test take step
     data_t point1;
@@ -334,14 +333,6 @@ int main(void) {
         float temp1;
         float temp2;
         float temp3;
-        /*
-        fscanf(fp, " %d %f %f %f %f",
-                &(y[i]), &temp0, &temp1, &temp2, &temp3);
-        data[i].dim[0] = temp0;
-        data[i].dim[1] = temp1;
-        data[i].dim[2] = temp2;
-        data[i].dim[3] = temp3;
-        */
 
         data[i].dim[0] = randFloat();
         data[i].dim[1] = randFloat();

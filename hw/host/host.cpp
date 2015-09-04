@@ -171,7 +171,10 @@ static bool take_step(data_t & point1, float & alpha1, bool y1, float err1,
 
 static void callDevice(hls::stream<transmit_t> in[NUM_DEVICES], hls::stream<transmit_t> out[NUM_DEVICES], uint32_t device_addr) {
 #ifdef C_SIM
-    device(out[device_addr], in[device_addr]);
+    static data_t ddr[NUM_DEVICES][DIV_ELEMENTS];
+
+    device(out[device_addr], in[device_addr], ddr[device_addr]);
+    device_addr++;
 #endif
 }
 
@@ -287,7 +290,7 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
     uint32_t point1_device;
     float err1;
     data_t point2;
-    #pragma HLS ARRAY_PARTITION variable=point2.dim dim=1
+    #pragma HLS ARRAY_PARTITION variable=point2.dim complete dim=1
     bool y2;
     uint32_t point2_idx;
     uint32_t device_point2_idx;
@@ -346,15 +349,9 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
             if (tempChanged) {
                 kkt_violators = 0;
                 for (k = 0; k < NUM_DEVICES; k++) {
-                    for (j = 0; j < DIV_ELEMENTS; j++) {
-                        device_kktViol[k][j] = 0;
-                    }
-                }
-
-                for (k = 0; k < NUM_DEVICES; k++) {
                     getKkt(device_kkt_violators, device_kktViol[k], in, out, k);
                     for (j = 0; j < device_kkt_violators; j++) {
-                        kktViol[j + kkt_violators] =  device_kktViol[k][j] + k*DIV_ELEMENTS;
+                        kktViol[j + kkt_violators] =  device_kktViol[k][j] + k * DIV_ELEMENTS;
                     }
                     kkt_violators += device_kkt_violators;
                 }
@@ -374,6 +371,7 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
                     point2_idx = temp;
                     point2_device = point2_idx / DIV_ELEMENTS;
                     point2_set = true;
+                    break;
                 }
             }
 
@@ -513,7 +511,7 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
             ap_wait();
             ap_wait();
 
-            unicast_recv(alpha[i + j*DIV_ELEMENTS], in, j);
+            unicast_recv(alpha[i + j * DIV_ELEMENTS], in, j);
         }
     }
 }

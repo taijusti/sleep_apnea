@@ -44,10 +44,15 @@ void send(int32_t i, hls::stream<transmit_t> &fifo) {
 
 void send(float f, hls::stream<transmit_t> &fifo) {
 #pragma HLS INLINE
+    // this is a conversion from floating point to fixed point.
+    // note that floating point values are converted to
+    // fixed point for transmission. this is strictly
+    // because Vivado HLS 2014.4 does not support unions
+    // with both floating and integer types. fixed point
+    // values can be expressed as integers
 
     transmit_t temp;
-    temp.i = (int32_t)(f * 65536); //IBR changed to int.
-    //temp.f = f;
+    temp.i = (int32_t)(f * 65536);
     fifo.write(temp);
 }
 
@@ -74,8 +79,13 @@ void recv(int32_t &i, hls::stream<transmit_t> &fifo) {
 }
 
 void recv(float &f, hls::stream<transmit_t> &fifo) {
+    // this is a conversion from fixed point to floating point.
+    // note that floating point values are converted to
+    // fixed point for transmission. this is strictly
+    // because Vivado HLS 2014.4 does not support unions
+    // with both floating and integer types. fixed point
+    // values can be expressed as integers
     f = (fifo.read().i * 1.0) / 65536;
-    //f = fifo.read().f;
 }
 
 void recv(data_t & point, hls::stream<transmit_t> & fifo) {

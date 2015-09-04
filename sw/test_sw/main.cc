@@ -737,37 +737,6 @@ static bool test_host(void) {
         for (i = 0; i < occupancy; i++) {
             assert(host_inst.Axi_bus_BaseAddress == XPAR_XHOST_0_S_AXI_AXI_BUS_BASEADDR);
             RxReceive(&host_debug_fifo, &temp);
-
-            /*
-            switch (state) {
-            default:
-            case 0:
-                state = 1;
-                assert(temp == 0xdeadbeef);
-                break;
-
-            case 1:
-                state = 2;
-                kkt_violators = temp;
-                break;
-
-            case 2:
-                state = 3;
-                point1_idx = temp;
-                break;
-
-            case 3:
-                state = 0;
-                point2_idx = temp;
-                break;
-            }
-            */
-        }
-
-        occupancy = XLlFifo_iRxOccupancy(&device_debug_fifo);
-        for (i = 0; i < occupancy; i++) {
-            assert(host_inst.Axi_bus_BaseAddress == XPAR_XHOST_0_S_AXI_AXI_BUS_BASEADDR);
-            RxReceive(&device_debug_fifo, &temp);
         }
     }
 

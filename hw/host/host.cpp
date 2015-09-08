@@ -392,7 +392,10 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
 
             // get max delta e
             for (j = 0; j < NUM_DEVICES; j++) {
+            #pragma HLS UNROLL
+
                 getMaxDeltaE(err2, device_max_delta_e, device_point1_idx, in, out, j);
+
                 if (j == 0) {
                     max_delta_e = device_max_delta_e;
                     point1_idx = device_point1_idx + j * DIV_ELEMENTS;
@@ -509,6 +512,7 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
 
     // get the results
     for (j = 0; j < NUM_DEVICES; j++) {
+    #pragma HLS UNROLL
         for (i = 0; i < DIV_ELEMENTS; i++) {
             unicast_send(COMMAND_GET_ALPHA, out, j);
             unicast_send(i, out, j);

@@ -173,8 +173,12 @@ static void callDevice(hls::stream<transmit_t> in[NUM_DEVICES], hls::stream<tran
 #ifdef C_SIM
     static data_t ddr[NUM_DEVICES][DIV_ELEMENTS];
 
-    device(out[device_addr], in[device_addr], ddr[device_addr]);
-    device_addr++;
+    if (device_addr == 0) {
+        device(out[device_addr], in[device_addr], ddr[device_addr]);
+    }
+    else {
+        device2(out[device_addr], in[device_addr], ddr[device_addr]);
+    }
 #endif
 }
 
@@ -349,7 +353,9 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
             if (tempChanged) {
                 kkt_violators = 0;
                 for (k = 0; k < NUM_DEVICES; k++) {
+                #pragma HLS UNROLL
                     getKkt(device_kkt_violators, device_kktViol[k], in, out, k);
+
                     for (j = 0; j < device_kkt_violators; j++) {
                         kktViol[j + kkt_violators] =  device_kktViol[k][j] + k * DIV_ELEMENTS;
                     }

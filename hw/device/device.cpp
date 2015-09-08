@@ -251,3 +251,148 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, volatil
     }
 #endif
 }
+
+#ifdef C_SIM
+void device2(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, volatile data_t start[DIV_ELEMENTS]) {
+#pragma HLS INTERFACE axis depth=2048 port=out
+#pragma HLS INTERFACE axis depth=2048 port=in
+#pragma HLS INTERFACE ap_bus depth=10000 port=start
+#pragma HLS RESOURCE core=AXI4M variable=start
+#pragma HLS RESOURCE core=AXI4LiteS variable=return metadata="-bus_bundle LITE"
+
+    unsigned int i;
+    unsigned int j;
+    static float alpha[DIV_ELEMENTS];
+    static float e_bram[DIV_ELEMENTS];
+    static bool y[DIV_ELEMENTS];
+    static float y1_delta_alpha1_product;
+    static float y2_delta_alpha2_product;
+    static float delta_b;
+    static float target_e;
+    static data_t point1;
+    static data_t point2;
+    uint32_t kkt_bram [DIV_ELEMENTS + 1];
+    static data_t x;
+    float max_delta_e;
+    uint32_t max_delta_e_idx;
+    uint32_t command;
+    transmit_t temp;
+
+    // get the command
+    recv(command, in);
+
+    switch (command) {
+    case COMMAND_INIT_DATA:
+        y1_delta_alpha1_product = 0;
+        y2_delta_alpha2_product = 0;
+        delta_b = 0;
+        target_e = 0;
+
+        init_device(start, in, y, e_bram, alpha);
+
+        helper(0, start, &point1);
+        helper(1, start, &point2);
+        break;
+
+    case COMMAND_GET_KKT:
+        kkt_pipeline_wrapper(point1, point2, start, e_bram, alpha, y,
+                kkt_bram, y1_delta_alpha1_product,
+                y2_delta_alpha2_product, delta_b);
+
+
+        // send off the # of kkt violators
+        send(kkt_bram[0], out);
+
+        for (i = 1; i < kkt_bram[0]+1; i++) {
+            send(kkt_bram[i], out);
+        }
+        break;
+
+    case COMMAND_GET_DELTA_E:
+        // run the delta E pipeline
+        delta_e(target_e, e_bram, max_delta_e, max_delta_e_idx);
+
+        // return the max delta E
+        send(max_delta_e, out);
+        send(max_delta_e_idx, out);
+        break;
+
+    case COMMAND_GET_POINT:
+        recv(j, in);
+        helper(j,start,&x);
+        send(x, out);
+        send(y[j], out);
+        send(e_bram[j], out);
+        send(alpha[j], out);
+        break;
+
+    case COMMAND_SET_POINT_1:
+        recv(point1, in);
+        break;
+
+    case COMMAND_SET_POINT_2:
+        recv(point2, in);
+        break;
+
+    case COMMAND_GET_E:
+        recv(i, in);
+        send(e_bram[i], out);
+        break;
+
+    case COMMAND_SET_E:
+        recv(target_e, in);
+        break;
+
+    case COMMAND_SET_Y1_ALPHA1_PRODUCT:
+        recv(y1_delta_alpha1_product, in);
+        break;
+
+    case COMMAND_SET_Y2_ALPHA2_PRODUCT:
+        recv(y2_delta_alpha2_product, in);
+        break;
+
+    case COMMAND_SET_DELTA_B:
+        recv(delta_b, in);
+        break;
+
+    case COMMAND_GET_ALPHA:
+        recv(i, in);
+        send(alpha[i], out);
+        break;
+
+    case COMMAND_SET_ALPHA:
+        recv(i, in);
+        recv(alpha[i], in);
+        break;
+
+    // TODO: all case statements from here on are strictly for debug
+    case COMMAND_GET_DELTA_B:
+        send(delta_b, out);
+        break;
+
+    case COMMAND_GET_Y1_ALPHA1_PRODUCT:
+        send(y1_delta_alpha1_product, out);
+        break;
+
+    case COMMAND_GET_Y2_ALPHA2_PRODUCT:
+        send(y2_delta_alpha2_product, out);
+        break;
+
+    case COMMAND_GET_POINT_1:
+        send(point1, out);
+        break;
+
+    case COMMAND_GET_POINT_2:
+        send(point2, out);
+        break;
+
+    case COMMAND_GET_TARGET_E:
+        send(target_e, out);
+        break;
+
+    default:
+        // do nothing, break statement just to make compiler happy
+        break;
+    }
+}
+#endif

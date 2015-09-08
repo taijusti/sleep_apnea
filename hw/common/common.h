@@ -11,7 +11,7 @@
 
     // uncomment this line for C-simulation. this define should
     // be commented out for synthesis
-    #define C_SIM
+    //#define C_SIM
 
     #define ABS(a) ((a) < 0 ? -(a) : (a))
     #define MAX(a,b) ((a) > (b) ? (a) : (b))

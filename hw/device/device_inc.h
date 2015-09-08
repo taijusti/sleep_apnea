@@ -16,4 +16,8 @@
 
     void device(hls::stream<transmit_t> &in, hls::stream<transmit_t> &out,
             volatile data_t start[DIV_ELEMENTS]);
+    #ifdef C_SIM
+        void device2(hls::stream<transmit_t> &in, hls::stream<transmit_t> &out,
+                volatile data_t start[DIV_ELEMENTS]);
+    #endif
 #endif

@@ -500,12 +500,11 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
                 broadcast_send(COMMAND_SET_DELTA_B, out);
                 broadcast_send(delta_b, out);
                 callAllDevice(in, out);
-
-                // for debug
-                iterations++;
-                send(iterations, debug);
             }
 
+            // for debug
+            iterations++;
+            send(iterations, debug);
             changed |= tempChanged;
         }
     } while(changed);

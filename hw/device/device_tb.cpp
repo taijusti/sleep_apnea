@@ -11,6 +11,7 @@
 #include "../k/k_inc.h"
 #include <hls_stream.h>
 #include <stdint.h>
+#include <math.h>
 
 #define TEST_ERROR (0.01)
 
@@ -86,9 +87,9 @@ int main(void) {
     uint32_t kkt_violators;
     uint32_t expected_kkt_violators;
     uint32_t i, j;
-   // data_t* ddr_model = (data_t*)malloc(DIV_ELEMENTS*sizeof(data_t));
     hls::stream<transmit_t> in;
     hls::stream<transmit_t> out;
+    data_t ddr [DIV_ELEMENTS];
 
     ////////////////////////////////////////////////////////////
     /////////GENERATE INPUT VECTOR / EXPECTED OUTPUT////////////
@@ -163,7 +164,7 @@ int main(void) {
 
         send(y[i], in);
     }
-    device(in, out);
+    device(in, out, ddr);
 
     // set the points
     send(COMMAND_SET_POINT_1, in);
@@ -171,38 +172,38 @@ int main(void) {
         send(point1.dim[i], in);
     }
 
-    device(in, out);
+    device(in, out, ddr);
     send(COMMAND_SET_POINT_2, in);
     for (i = 0; i < DIMENSIONS; i++) {
         send(point2.dim[i], in);
     }
-    device(in, out);
+    device(in, out, ddr);
 
     //set the alphas
     for (i = 0; i < DIV_ELEMENTS; i++) {
         send(COMMAND_SET_ALPHA, in);
         send(i, in);
         send(alpha[i], in);
-        device(in, out);
+        device(in, out, ddr);
     }
 
     // set the delta alpha products
     send(COMMAND_SET_Y1_ALPHA1_PRODUCT, in);
     send(y1_delta_alpha1_product, in);
-    device(in, out);
+    device(in, out, ddr);
     send(COMMAND_SET_Y2_ALPHA2_PRODUCT, in);
     send(y2_delta_alpha2_product, in);
-    device(in, out);
+    device(in, out, ddr);
 
     // set delta B
     send(COMMAND_SET_DELTA_B, in);
     send(delta_b, in);
-    device(in, out);
+    device(in, out, ddr);
 
     // set target E
     send(COMMAND_SET_E, in);
     send(target_e, in);
-    device(in, out);
+    device(in, out, ddr);
 
     ////////////////////////////////////////////////////////////
     ////////////////COMPUTE EVERYTHING//////////////////////////
@@ -210,7 +211,7 @@ int main(void) {
 
     // compute and get KKT violators
     send(COMMAND_GET_KKT, in);
-    device(in, out);
+    device(in, out, ddr);
     recv(kkt_violators, out);
     for (i = 0; i < kkt_violators; i++) {
         recv(kkt_bram[i], out);
@@ -218,7 +219,7 @@ int main(void) {
 
     // compute delta E
     send(COMMAND_GET_DELTA_E, in);
-    device(in, out);
+    device(in, out, ddr);
     recv(max_delta_e, out);
     recv(max_delta_e_idx, out);
 
@@ -230,7 +231,7 @@ int main(void) {
     for (i = 0; i < DIV_ELEMENTS; i++) {
         send(COMMAND_GET_E, in);
         send(i, in);
-        device(in, out);
+        device(in, out, ddr);
         recv(e_bram[i], out);
     }
 

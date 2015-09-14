@@ -233,11 +233,12 @@ void smotrain(data_t training_data [ELEMENTS], bool y [ELEMENTS],
     int i, j;
 
     memset(alpha, 0, sizeof(float) * ELEMENTS);
-
+    int k = 0;
     b = 0;
     bool changed = false;
     bool examineAll = true;
     while (examineAll || changed) {
+        k++;
         changed = false;
 
         if (examineAll) {
@@ -334,10 +335,10 @@ int main(void) {
         float temp2;
         float temp3;
 
-        data[i].dim[0] = randFloat();
-        data[i].dim[1] = randFloat();
-        data[i].dim[2] = randFloat();
-        data[i].dim[3] = randFloat();
+        data[i].dim[0] = randFloat() * 16384;
+        data[i].dim[1] = randFloat() * 16384;
+        data[i].dim[2] = randFloat() * 16384;
+        data[i].dim[3] = randFloat() * 16384;
         y[i] = randFloat() > 0.5;
     }
 

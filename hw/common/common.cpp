@@ -104,6 +104,7 @@ void broadcast_send(uint32_t ui, hls::stream<transmit_t> fifo[NUM_DEVICES]) {
     temp.ui = ui;
 
     for (k = 0; k < NUM_DEVICES; k++) {
+    #pragma HLS UNROLL
         fifo[k].write(temp);
     }
 }
@@ -115,6 +116,7 @@ void broadcast_send(int32_t i, hls::stream<transmit_t> fifo[NUM_DEVICES]) {
     temp.i = i;
 
     for (k = 0; k < NUM_DEVICES; k++) {
+    #pragma HLS UNROLL
         fifo[k].write(temp);
     }
 }
@@ -126,6 +128,7 @@ void broadcast_send(bool y, hls::stream<transmit_t> fifo[NUM_DEVICES]) {
     temp.b = y;
 
     for (k = 0; k < NUM_DEVICES; k++) {
+    #pragma HLS UNROLL
         fifo[k].write(temp);
     }
 }
@@ -137,6 +140,7 @@ void broadcast_send(float f, hls::stream<transmit_t> fifo[NUM_DEVICES]) {
     temp.i = (int32_t)(f * 65536);
 
     for (k = 0; k < NUM_DEVICES; k++) {
+    #pragma HLS UNROLL
         fifo[k].write(temp);
     }
 }
@@ -146,6 +150,7 @@ void broadcast_send(data_t &point, hls::stream<transmit_t> fifo[NUM_DEVICES]) {
     uint32_t i, k;
 
     for (k = 0; k < NUM_DEVICES; k++) {
+    #pragma HLS UNROLL
         for (i = 0; i < DIMENSIONS; i++) {
             unicast_send(point.dim[i], fifo, k);
         }
@@ -194,6 +199,7 @@ void broadcast_recv(uint32_t ui[NUM_DEVICES], hls::stream<transmit_t> fifo[NUM_D
     uint32_t k;
 
     for (k = 0; k < NUM_DEVICES; k++) {
+    #pragma HLS UNROLL
         ui[k] = fifo[k].read().ui;
     }
 }
@@ -203,6 +209,7 @@ void broadcast_recv(int32_t i[NUM_DEVICES], hls::stream<transmit_t> fifo[NUM_DEV
     uint32_t k;
 
     for (k = 0; k < NUM_DEVICES; k++) {
+    #pragma HLS UNROLL
         i[k] = fifo[k].read().i;
     }
 }
@@ -212,6 +219,7 @@ void broadcast_recv(bool y[NUM_DEVICES], hls::stream<transmit_t> fifo[NUM_DEVICE
     uint32_t k;
 
     for (k = 0; k < NUM_DEVICES; k++) {
+    #pragma HLS UNROLL
         y[k] = fifo[k].read().b;
     }
 }
@@ -221,6 +229,7 @@ void broadcast_recv(float f[NUM_DEVICES], hls::stream<transmit_t> fifo[NUM_DEVIC
     uint32_t k;
 
     for (k = 0; k < NUM_DEVICES; k++) {
+    #pragma HLS UNROLL
         f[k] = (fifo[k].read().i * 1.0) / 65536;
     }
 }
@@ -229,9 +238,10 @@ void broadcast_recv(data_t point[NUM_DEVICES], hls::stream<transmit_t> fifo[NUM_
 #pragma HLS INLINE
     uint32_t i, k;
     for (k = 0; k < NUM_DEVICES; k++) {
+    #pragma HLS UNROLL
         for (i = 0; i < DIMENSIONS; i++) {
             unicast_recv(point[k].dim[i], fifo, k);
-        };
+        }
     }
 }
 

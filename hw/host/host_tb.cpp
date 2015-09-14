@@ -274,6 +274,7 @@ int main(void) {
     hls::stream<transmit_t> in[NUM_DEVICES];
     hls::stream<transmit_t> out[NUM_DEVICES];
     hls::stream<transmit_t> debug;
+    transmit_t temp;
 
     // test take step
     data_t point1;
@@ -360,6 +361,9 @@ int main(void) {
             return 1;
         }
     }
+
+    // empty out the debug fifo to supress warnings
+    while (debug.read_nb(temp));
 
     printf("TEST PASSED!\n");
     return 0;

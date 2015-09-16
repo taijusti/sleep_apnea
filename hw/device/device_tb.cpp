@@ -156,53 +156,48 @@ int main(void) {
     ////////////////////////////////////////////////////////////
 
     // run the module, starting with initializing the device
-    send(COMMAND_INIT_DATA, in);
+    unicast_send(COMMAND_INIT_DATA, in);
     for (i = 0; i < DIV_ELEMENTS; i++) {
         for (j = 0; j < DIMENSIONS; j++) {
-            send(data[i].dim[j], in);
+            unicast_send(data[i].dim[j], in);
         }
 
-        send(y[i], in);
+        unicast_send(y[i], in);
     }
     device(in, out, ddr);
 
     // set the points
-    send(COMMAND_SET_POINT_1, in);
+    unicast_send(COMMAND_SET_POINT_1, in);
     for (i = 0; i < DIMENSIONS; i++) {
-        send(point1.dim[i], in);
+        unicast_send(point1.dim[i], in);
     }
 
     device(in, out, ddr);
-    send(COMMAND_SET_POINT_2, in);
+    unicast_send(COMMAND_SET_POINT_2, in);
     for (i = 0; i < DIMENSIONS; i++) {
-        send(point2.dim[i], in);
+        unicast_send(point2.dim[i], in);
     }
     device(in, out, ddr);
 
     //set the alphas
     for (i = 0; i < DIV_ELEMENTS; i++) {
-        send(COMMAND_SET_ALPHA, in);
-        send(i, in);
-        send(alpha[i], in);
+        unicast_send(COMMAND_SET_ALPHA, in);
+        unicast_send(i, in);
+        unicast_send(alpha[i], in);
         device(in, out, ddr);
     }
 
     // set the delta alpha products
-    send(COMMAND_SET_Y1_ALPHA1_PRODUCT, in);
-    send(y1_delta_alpha1_product, in);
+    unicast_send(COMMAND_SET_Y1_ALPHA1_PRODUCT, in);
+    unicast_send(y1_delta_alpha1_product, in);
     device(in, out, ddr);
-    send(COMMAND_SET_Y2_ALPHA2_PRODUCT, in);
-    send(y2_delta_alpha2_product, in);
+    unicast_send(COMMAND_SET_Y2_ALPHA2_PRODUCT, in);
+    unicast_send(y2_delta_alpha2_product, in);
     device(in, out, ddr);
 
     // set delta B
-    send(COMMAND_SET_DELTA_B, in);
-    send(delta_b, in);
-    device(in, out, ddr);
-
-    // set target E
-    send(COMMAND_SET_E, in);
-    send(target_e, in);
+    unicast_send(COMMAND_SET_DELTA_B, in);
+    unicast_send(delta_b, in);
     device(in, out, ddr);
 
     ////////////////////////////////////////////////////////////
@@ -210,18 +205,19 @@ int main(void) {
     ////////////////////////////////////////////////////////////
 
     // compute and get KKT violators
-    send(COMMAND_GET_KKT, in);
+    unicast_send(COMMAND_GET_KKT, in);
     device(in, out, ddr);
-    recv(kkt_violators, out);
+    unicast_recv(kkt_violators, out);
     for (i = 0; i < kkt_violators; i++) {
-        recv(kkt_bram[i], out);
+        unicast_recv(kkt_bram[i], out);
     }
 
     // compute delta E
-    send(COMMAND_GET_DELTA_E, in);
+    unicast_send(COMMAND_GET_DELTA_E, in);
+    unicast_send(target_e, in);
     device(in, out, ddr);
-    recv(max_delta_e, out);
-    recv(max_delta_e_idx, out);
+    unicast_recv(max_delta_e, out);
+    unicast_recv(max_delta_e_idx, out);
 
     ////////////////////////////////////////////////////////////
     //////////////////GET ALL RESULTS///////////////////////////
@@ -229,10 +225,10 @@ int main(void) {
 
     // ask for all E values
     for (i = 0; i < DIV_ELEMENTS; i++) {
-        send(COMMAND_GET_E, in);
-        send(i, in);
+        unicast_send(COMMAND_GET_E, in);
+        unicast_send(i, in);
         device(in, out, ddr);
-        recv(e_bram[i], out);
+        unicast_recv(e_bram[i], out);
     }
 
     ////////////////////////////////////////////////////////////

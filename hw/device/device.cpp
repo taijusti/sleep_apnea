@@ -10,6 +10,7 @@
 #include "../kkt/kkt_inc.h"
 #include "../e/e_inc.h"
 #include "../k/k_inc.h"
+#include "../take_step/take_step_inc.h"
 #include <stdint.h>
 #include <hls_stream.h>
 #include <stdio.h>
@@ -100,6 +101,23 @@ void helper (unsigned int j, volatile data_t* start, data_t* x)
 #endif
 }
 
+static void take_step_pipeline(data_t & point2, float alpha2, bool y2,
+        float err2, float b, volatile data_t* start,
+        float e_bram[DIV_ELEMENTS], float alpha [DIV_ELEMENTS],
+        bool y [DIV_ELEMENTS], float & max_delta_e, uint32_t & max_delta_e_idx) {
+    hls::stream<bool> step_success;
+    hls::stream<data_t> data_fifo;
+    hls::stream<float> alpha_fifo;
+    hls::stream<bool> y_fifo;
+    data_t data [DIV_ELEMENTS];
+
+    memcpy(data, (data_t*)start, DIV_ELEMENTS * sizeof(data_t));
+    BRAMtoFIFO(data_fifo, data, y_fifo, y, alpha_fifo, alpha);
+    take_step(data_fifo, alpha_fifo, y_fifo, e_bram, point2,
+            alpha2, y2, err2,  b, step_success);
+    delta_e(step_success, err2, e_bram, max_delta_e, max_delta_e_idx);
+}
+
 void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, volatile data_t start[DIV_ELEMENTS]) {
 #pragma HLS INTERFACE axis depth=2048 port=out
 #pragma HLS INTERFACE axis depth=2048 port=in
@@ -115,7 +133,6 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, volatil
     static float y1_delta_alpha1_product;
     static float y2_delta_alpha2_product;
     static float delta_b;
-    static float target_e;
     static data_t point1;
     static data_t point2;
     uint32_t kkt_bram [DIV_ELEMENTS + 1];
@@ -124,6 +141,10 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, volatil
     uint32_t max_delta_e_idx;
     uint32_t command;
     transmit_t temp;
+    float alpha2;
+    bool y2;
+    float err2;
+    float b;
 
 #ifndef C_SIM
     while(1) {
@@ -136,7 +157,6 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, volatil
             y1_delta_alpha1_product = 0;
             y2_delta_alpha2_product = 0;
             delta_b = 0;
-            target_e = 0;
 
             init_device(start, in, y, e_bram, alpha);
 
@@ -161,8 +181,13 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, volatil
 
         case COMMAND_GET_DELTA_E:
             // run the delta E pipeline
-            unicast_recv(target_e, in);
-            delta_e(target_e, e_bram, max_delta_e, max_delta_e_idx);
+            unicast_recv(alpha2, in);
+            unicast_recv(y2, in);
+            unicast_recv(err2, in);
+            unicast_recv(b, in);
+
+            take_step_pipeline(point2, alpha2, y2, err2,  b, start,
+                    e_bram, alpha, y, max_delta_e, max_delta_e_idx);
 
             // return the max delta E
             unicast_send(max_delta_e, out);
@@ -213,35 +238,6 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, volatil
             unicast_recv(alpha[i], in);
             break;
 
-        // all case statements from here on are strictly for debug
-        case COMMAND_GET_DELTA_B:
-            unicast_send(delta_b, out);
-            break;
-
-        case COMMAND_GET_Y1_ALPHA1_PRODUCT:
-            unicast_send(y1_delta_alpha1_product, out);
-            break;
-
-        case COMMAND_GET_Y2_ALPHA2_PRODUCT:
-            unicast_send(y2_delta_alpha2_product, out);
-            break;
-
-        case COMMAND_GET_POINT_1:
-            unicast_send(point1, out);
-            break;
-
-        case COMMAND_GET_POINT_2:
-            unicast_send(point2, out);
-            break;
-
-        case COMMAND_GET_TARGET_E:
-            unicast_send(target_e, out);
-            break;
-
-        case COMMAND_SET_E:
-            unicast_recv(target_e, in);
-            break;
-
         default:
             // do nothing, break statement just to make compiler happy
             break;
@@ -268,7 +264,6 @@ void device2(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, volati
     static float y1_delta_alpha1_product;
     static float y2_delta_alpha2_product;
     static float delta_b;
-    static float target_e;
     static data_t point1;
     static data_t point2;
     uint32_t kkt_bram [DIV_ELEMENTS + 1];
@@ -277,6 +272,10 @@ void device2(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, volati
     uint32_t max_delta_e_idx;
     uint32_t command;
     transmit_t temp;
+    float alpha2;
+    bool y2;
+    float err2;
+    float b;
 
     // get the command
     unicast_recv(command, in);
@@ -286,7 +285,6 @@ void device2(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, volati
         y1_delta_alpha1_product = 0;
         y2_delta_alpha2_product = 0;
         delta_b = 0;
-        target_e = 0;
 
         init_device(start, in, y, e_bram, alpha);
 
@@ -311,8 +309,13 @@ void device2(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, volati
 
     case COMMAND_GET_DELTA_E:
         // run the delta E pipeline
-        unicast_recv(target_e, in);
-        delta_e(target_e, e_bram, max_delta_e, max_delta_e_idx);
+        unicast_recv(alpha2, in);
+        unicast_recv(y2, in);
+        unicast_recv(err2, in);
+        unicast_recv(b, in);
+
+        take_step_pipeline(point2, alpha2, y2, err2,  b, start,
+                e_bram, alpha, y, max_delta_e, max_delta_e_idx);
 
         // return the max delta E
         unicast_send(max_delta_e, out);
@@ -361,35 +364,6 @@ void device2(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, volati
     case COMMAND_SET_ALPHA:
         unicast_recv(i, in);
         unicast_recv(alpha[i], in);
-        break;
-
-    // all case statements from here on are strictly for debug
-    case COMMAND_GET_DELTA_B:
-        unicast_send(delta_b, out);
-        break;
-
-    case COMMAND_GET_Y1_ALPHA1_PRODUCT:
-        unicast_send(y1_delta_alpha1_product, out);
-        break;
-
-    case COMMAND_GET_Y2_ALPHA2_PRODUCT:
-        unicast_send(y2_delta_alpha2_product, out);
-        break;
-
-    case COMMAND_GET_POINT_1:
-        unicast_send(point1, out);
-        break;
-
-    case COMMAND_GET_POINT_2:
-        unicast_send(point2, out);
-        break;
-
-    case COMMAND_GET_TARGET_E:
-        unicast_send(target_e, out);
-        break;
-
-    case COMMAND_SET_E:
-        unicast_recv(target_e, in);
         break;
 
     default:

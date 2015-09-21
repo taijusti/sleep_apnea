@@ -64,6 +64,114 @@ static bool sw_kkt(float alpha, bool y, float e) {
     }
 }
 
+static bool sw_take_step(data_t & point1, data_t & point2, float err1, float err2,
+        bool y1, bool y2, float alpha1, float alpha2, float b) {
+
+    float k11, k22, k12, n;
+    k11 = sw_k(&point1, &point1);
+    k22 = sw_k(&point2, &point2);
+    k12 = sw_k(&point1, &point2);
+    n = k11 + k22 - (2 * k12);
+    uint32_t i;
+    float low, high;
+    float alpha2New;
+    int s = y1 == y2 ? 1 : -1;
+
+    if (&point1 == &point2) {
+        return false;
+    }
+
+    if (y1 == y2) {
+        low = MAX(0, alpha2 + alpha1 - C);
+        high = MIN(C, alpha1 + alpha2);
+    }
+    else {
+        low = MAX(0, alpha2- alpha1);
+        high = MIN(C, C + alpha2 - alpha1);
+    }
+
+    if (low == high) {
+        return false;
+    }
+
+    float f1, f2, l1, h1, psiL, psiH,alpha2NewClipped;
+    if (n > 0) {
+        alpha2New = alpha2 + ((((y2 ? 1 : -1) * (err1 - err2)) / (n * 1.0)));
+        alpha2NewClipped = alpha2New;
+        if (alpha2New < low)
+            alpha2NewClipped = low;
+        else if (alpha2New > high)
+            alpha2NewClipped = high;
+    }
+    else {
+        f1 = y1 * (err1 + b)
+            - alpha1 * k11
+            - s * alpha2 * k12;
+        f2 = y2* (err2 + b)
+            - s * alpha1 * k12
+            - alpha2 * k22;
+        l1 = alpha1 + s * (alpha2 - low);
+        h1 = alpha1 + s * (alpha2- high);
+        psiL = l1*f1
+            + low*f2
+            + 0.5*l1*l1*k11
+            + 0.5*low*low*k22
+            + s*l1*low*k12;
+        psiH = h1*f1
+            + high*f2
+            + 0.5*h1*h1*k11
+            + 0.5*high*high*k22
+            + s*h1*high*k12;
+
+        if (psiL < psiH - 0.001)
+            alpha2NewClipped = low;
+
+        else if (psiL > psiH + 0.001)
+            alpha2NewClipped = high;
+
+        else
+            alpha2NewClipped = alpha2;
+    }
+
+    // I dont really understand this condition,
+    // I think it is to check if alpha changed
+    // significantly or not. Ibrahim
+    if (ABS(alpha2NewClipped - alpha2)
+        < EPSILON * (alpha2NewClipped + alpha2 + EPSILON))
+    {
+        return false;
+    }
+
+    // compute alpha1
+    float alpha1New = alpha1 + s * (alpha2 - alpha2NewClipped);
+
+    // updating the threshold
+    float bNew;
+    float b1 = err1
+        + (y1 ? 1 : -1) * (alpha1New - alpha1) * k11
+        + (y2 ? 1 : -1) * (alpha2NewClipped - alpha2) * k12
+        + b;
+    float b2 = err2
+        + (y1 ? 1 : -1) * (alpha1New - alpha1) * k12
+        + (y2 ? 1 : -1) * (alpha2NewClipped - alpha2) * k22
+        + b;
+
+    if ((alpha1New > 0) && (alpha1New < C))
+        bNew = b1;
+
+    else if ((alpha2NewClipped > 0) && (alpha2NewClipped < C))
+        bNew = b2;
+
+    else
+        bNew = (b1 + b2) / (2);
+
+    // updating the error cache
+    b = bNew;
+    alpha1 = alpha1New;
+    alpha2 = alpha2NewClipped;
+    return true;
+}
+
 int main(void) {
     data_t data[DIV_ELEMENTS];
     data_t point1;
@@ -78,7 +186,6 @@ int main(void) {
     float expected_max_delta_e;
     uint32_t max_delta_e_idx;
     uint32_t expected_max_delta_e_idx;
-    float target_e;
     float alpha[DIV_ELEMENTS];
     float k1[DIV_ELEMENTS];
     float k2[DIV_ELEMENTS];
@@ -90,6 +197,11 @@ int main(void) {
     hls::stream<transmit_t> in;
     hls::stream<transmit_t> out;
     data_t ddr [DIV_ELEMENTS];
+    uint32_t alpha2;
+    float err2;
+    bool y2;
+    float b;
+    bool step_success;
 
     ////////////////////////////////////////////////////////////
     /////////GENERATE INPUT VECTOR / EXPECTED OUTPUT////////////
@@ -113,9 +225,12 @@ int main(void) {
         point2.dim[i] = randFixed();
     }
 
-    target_e = randFixed();
+    alpha2 = randFixed();
+    err2 = randFixed();
+    y2 = randFixed() > 0.5;
+    b = randFixed();
 
-    // calculate correct answers
+    // calculate the expected E bram values
     for (i = 0; i < DIV_ELEMENTS; i++) {
         k1[i] = sw_k(&point1, data + i);
         k2[i] = sw_k(&point2, data + i);
@@ -128,6 +243,7 @@ int main(void) {
                                   delta_b);
     }
 
+    // calculate the correct KKT violators
     j = 0;
     for (i = 0; i < DIV_ELEMENTS; i++) {
         if (!sw_kkt(alpha[i], y[i], expected_e_bram[i])) {
@@ -137,10 +253,18 @@ int main(void) {
     }
     expected_kkt_violators = j;
 
+    // calculate the correct max delta E value
     expected_max_delta_e = 0;
     max_delta_e_idx = 0;
     for (i = 0; i < DIV_ELEMENTS; i++) {
-    	float delta_e = expected_e_bram[i] - target_e;
+        step_success = sw_take_step(data[i], point2, e_bram[i], err2,
+                y[i], y2, alpha[i], alpha2, b);
+
+        if (!step_success) {
+            continue;
+        }
+
+    	float delta_e = expected_e_bram[i] - err2;
     	if (delta_e < 0) {
     		delta_e *= -1;
     	}
@@ -158,10 +282,7 @@ int main(void) {
     // run the module, starting with initializing the device
     unicast_send(COMMAND_INIT_DATA, in);
     for (i = 0; i < DIV_ELEMENTS; i++) {
-        for (j = 0; j < DIMENSIONS; j++) {
-            unicast_send(data[i].dim[j], in);
-        }
-
+        unicast_send(data[i], in);
         unicast_send(y[i], in);
     }
     device(in, out, ddr);
@@ -214,7 +335,10 @@ int main(void) {
 
     // compute delta E
     unicast_send(COMMAND_GET_DELTA_E, in);
-    unicast_send(target_e, in);
+    unicast_send(alpha2, in);
+    unicast_send(y2, in);
+    unicast_send(err2, in);
+    unicast_send(b, in);
     device(in, out, ddr);
     unicast_recv(max_delta_e, out);
     unicast_recv(max_delta_e_idx, out);

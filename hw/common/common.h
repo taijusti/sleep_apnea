@@ -11,7 +11,7 @@
 
     // uncomment this line for C-simulation. this define should
     // be commented out for synthesis
-    //#define C_SIM
+    #define C_SIM
 
     #define ABS(a) ((a) < 0 ? -(a) : (a))
     #define MAX(a,b) ((a) > (b) ? (a) : (b))
@@ -41,15 +41,6 @@
     #define COMMAND_SET_DELTA_B           (10)
     #define COMMAND_GET_ALPHA             (11)
     #define COMMAND_SET_ALPHA             (12)
-
-    // debug commands. commands that are not regularly used
-    // but the device will respond to for the sake of debug
-    #define COMMAND_GET_DELTA_B           (13)
-    #define COMMAND_GET_Y1_ALPHA1_PRODUCT (14)
-    #define COMMAND_GET_Y2_ALPHA2_PRODUCT (15)
-    #define COMMAND_GET_POINT_1           (16)
-    #define COMMAND_GET_POINT_2           (17)
-    #define COMMAND_GET_TARGET_E          (18)
 
     typedef union {
         uint32_t ui;

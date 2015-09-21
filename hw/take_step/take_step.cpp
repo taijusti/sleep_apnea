@@ -20,7 +20,7 @@ static bool equals(data_t & point1, data_t & point2) {
 }
 
 void take_step(hls::stream<data_t> & data_fifo, hls::stream<float> & alpha_fifo,
-        hls::stream<bool> & y_fifo, hls::stream<float> & err_fifo, data_t & point2,
+        hls::stream<bool> & y_fifo, float e_bram [DIV_ELEMENTS], data_t & point2,
         float alpha2, bool y2, float err2, float b, hls::stream<bool> & step_success) {
 #pragma HLS ARRAY_PARTITION variable=point2.dim dim=1
     float low;
@@ -44,12 +44,12 @@ void take_step(hls::stream<data_t> & data_fifo, hls::stream<float> & alpha_fifo,
     float b2;
     uint32_t i;
 
-    for (i = 0; i < PARTITION_ELEMENTS; i++) {
+    for (i = 0; i < DIV_ELEMENTS; i++) {
     #pragma HLS PIPELINE
         data_t point1 = data_fifo.read();
         float alpha1 = alpha_fifo.read();
         bool y1 = y_fifo.read();
-        float err1 = err_fifo.read();
+        float err1 = e_bram[i];
 
         // check if point1 == point2
         if (equals(point1, point2)) {

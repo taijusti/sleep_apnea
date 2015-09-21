@@ -6,10 +6,12 @@
 #include "delta_e_inc.h"
 #include "../common/common.h"
 #include <stdio.h>
+#include <hls_stream.h>
 
 using namespace std;
 
-void delta_e(float target_e, float e_bram [DIV_ELEMENTS], float & max_delta_e, uint32_t & max_delta_e_idx) {
+void delta_e(hls::stream<bool> & step_success, float target_e, float e_bram [DIV_ELEMENTS],
+        float & max_delta_e, uint32_t & max_delta_e_idx) {
     #pragma HLS INLINE
     uint32_t i;
     float delta_e;
@@ -17,11 +19,16 @@ void delta_e(float target_e, float e_bram [DIV_ELEMENTS], float & max_delta_e, u
     max_delta_e = -1;
 
     for (i = 0; i < DIV_ELEMENTS; i++) {
-    	delta_e = ABS(target_e - e_bram[i]);
+    #pragma HLS PIPELINE
 
-        if (delta_e > max_delta_e) {
-            max_delta_e = ABS(delta_e);
-            max_delta_e_idx = i;
+        if (step_success.read()) {
+
+            delta_e = ABS(target_e - e_bram[i]);
+
+            if (delta_e > max_delta_e) {
+                max_delta_e = ABS(delta_e);
+                max_delta_e_idx = i;
+            }
         }
     }
 }

@@ -401,7 +401,8 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
             // Second point heuristic: Hierarchy #1 - loop over all non-bound alphas
             j = start_offset = rand_int() % ELEMENTS;
             while (!tempChanged && j < (start_offset + ELEMENTS)) {
-                getPoint(j % ELEMENTS, point1, y1, alpha1, err1, in, out);
+                point1_idx = j % ELEMENTS;
+                getPoint(point1_idx, point1, y1, alpha1, err1, in, out);
 
                 if (alpha1 != 0 && alpha1 != C) {
                     alpha1_old = alpha1;
@@ -416,7 +417,8 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
             // Second point heuristic: Hierarchy #2 - loop over all bound alphas
             j = start_offset = rand_int() % ELEMENTS;
             while (!tempChanged && j < (start_offset + ELEMENTS)) {
-                getPoint(j % ELEMENTS, point1, y1, alpha1, err1, in, out);
+                point1_idx = j % ELEMENTS;
+                getPoint(point1_idx, point1, y1, alpha1, err1, in, out);
 
                 if (alpha1 == 0 || alpha1 == C) {
                     alpha1_old = alpha1;

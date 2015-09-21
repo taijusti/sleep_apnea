@@ -132,7 +132,7 @@ void broadcast_recv(bool y[NUM_DEVICES], hls::stream<transmit_t> fifo[NUM_DEVICE
 }
 
 void broadcast_recv(float f[NUM_DEVICES], hls::stream<transmit_t> fifo[NUM_DEVICES]) {
-#pragma HLS INLINE off
+#pragma HLS INLINE
     uint32_t k;
 
     for (k = 0; k < NUM_DEVICES; k++) {

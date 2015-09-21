@@ -725,20 +725,13 @@ static bool test_host(void) {
     // launch the host
     XHost_Start(&host_inst);
 
-    // forward fifo communication to device
-    uint32_t occupancy;
-    uint32_t kkt_violators;
-    uint32_t point1_idx;
-    uint32_t point2_idx;
-    uint32_t state = 0;
-
+    // wait for the host to finish. continually empty out the host debug fifo
     while (XHost_IsDone(&host_inst) == 0) {
-        occupancy = XLlFifo_iRxOccupancy(&host_debug_fifo);
-        for (i = 0; i < occupancy; i++) {
+        if (XLlFifo_IsRxEmpty(&host_debug_fifo) == FALSE) {
             assert(host_inst.Axi_bus_BaseAddress == XPAR_XHOST_0_S_AXI_AXI_BUS_BASEADDR);
             RxReceive(&host_debug_fifo, &temp);
-        }
-    }
+        }   
+    }   
 
     // read back all the computed values
     XHost_Read_alpha_Words(&host_inst, 0, (int *) actual_alpha, ELEMENTS);

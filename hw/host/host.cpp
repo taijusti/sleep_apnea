@@ -254,15 +254,20 @@ static void getKkt(uint32_t & num_kkt_viol, uint32_t kkt_viol [ELEMENTS],
     }
 }
 
-static void getMaxDeltaE(float err2, float & max_delta_e, uint32_t & point1_idx,
-        hls::stream<transmit_t> in[NUM_DEVICES], hls::stream<transmit_t> out[NUM_DEVICES]) {
+static void getMaxDeltaE(float alpha2, bool y2, float err2, float b,
+        float & max_delta_e, uint32_t & point1_idx,
+        hls::stream<transmit_t> in[NUM_DEVICES],
+        hls::stream<transmit_t> out[NUM_DEVICES]) {
     float device_max_delta_e [NUM_DEVICES];
     uint32_t device_max_delta_e_idx [NUM_DEVICES];
     uint32_t i;
 
     // get the max delta E
     broadcast_send(COMMAND_GET_DELTA_E, out);
+    broadcast_send(alpha2, out);
+    broadcast_send(y2, out);
     broadcast_send(err2, out);
+    broadcast_send(b, out);
 
     callAllDevice(in, out);
     ap_wait();
@@ -382,9 +387,17 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
             getPoint(point2_idx, point2, y2, alpha2, err2, in, out);
 
             // get max delta e
-            getMaxDeltaE(err2, max_delta_e, point1_idx, in, out);
+            broadcast_send(COMMAND_SET_POINT_2, out);
+            broadcast_send(point2, out);
+            callAllDevice(in, out);
+            getMaxDeltaE(alpha2, y2, err2, b, max_delta_e, point1_idx, in, out);
 
             // get all data related to the second point
+            if (max_delta_e <= 0) {
+                tempChanged = false;
+                continue;
+            }
+
             getPoint(point1_idx, point1, y1, alpha1, err1, in, out);
 
             // at this point we have all the information we need for a single
@@ -393,42 +406,9 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
             alpha2_old = alpha2;
             b_old = b;
 
-            tempChanged = false;
-            tempChanged |= take_step(point1, alpha1, y1, err1,
+            tempChanged = take_step(point1, alpha1, y1, err1,
                                     point2, alpha2, y2, err2, b,
                                     point1_idx, point2_idx);
-
-            // Second point heuristic: Hierarchy #1 - loop over all non-bound alphas
-            j = start_offset = rand_int() % ELEMENTS;
-            while (!tempChanged && j < (start_offset + ELEMENTS)) {
-                point1_idx = j % ELEMENTS;
-                getPoint(point1_idx, point1, y1, alpha1, err1, in, out);
-
-                if (alpha1 != 0 && alpha1 != C) {
-                    alpha1_old = alpha1;
-                    tempChanged |= take_step(point1, alpha1, y1, err1,
-                                             point2, alpha2, y2, err2, b,
-                                             point1_idx, point2_idx);
-                }
-
-                j++;
-            }
-
-            // Second point heuristic: Hierarchy #2 - loop over all bound alphas
-            j = start_offset = rand_int() % ELEMENTS;
-            while (!tempChanged && j < (start_offset + ELEMENTS)) {
-                point1_idx = j % ELEMENTS;
-                getPoint(point1_idx, point1, y1, alpha1, err1, in, out);
-
-                if (alpha1 == 0 || alpha1 == C) {
-                    alpha1_old = alpha1;
-                    tempChanged |= take_step(point1, alpha1, y1, err1,
-                                           point2, alpha2, y2, err2, b,
-                                           point1_idx, point2_idx);
-                }
-
-                j++;
-            }
 
             if (tempChanged) {
                 // update the alphas

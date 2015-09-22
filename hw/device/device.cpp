@@ -247,7 +247,6 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, volatil
 #endif
 }
 
-// TODO: copy device over to here
 #ifdef C_SIM
 void device2(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, volatile data_t start[DIV_ELEMENTS]) {
 #pragma HLS INTERFACE axis depth=2048 port=out

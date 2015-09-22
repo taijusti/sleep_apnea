@@ -11,12 +11,12 @@
 
     // uncomment this line for C-simulation. this define should
     // be commented out for synthesis
-    #define C_SIM
+    // #define C_SIM
 
     #define ABS(a) ((a) < 0 ? -(a) : (a))
     #define MAX(a,b) ((a) > (b) ? (a) : (b))
     #define MIN(a,b) ((a) < (b) ? (a) : (b))
-    #define ELEMENTS (128)
+    #define ELEMENTS (2048)
     #define DIMENSIONS (4)
     #define C (5)
     #define ERROR (0.001)

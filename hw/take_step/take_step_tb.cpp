@@ -144,7 +144,7 @@ int main(void) {
     hls::stream<data_t> data_fifo;
     hls::stream<float> alpha_fifo;
     hls::stream<bool> y_fifo;
-    hls::stream<float> err_fifo;
+    float err_bram [DIV_ELEMENTS];
     hls::stream<bool> step_success;
 
     // generate random point2 data
@@ -179,11 +179,11 @@ int main(void) {
         data_fifo.write(point1);
         alpha_fifo.write(alpha1);
         y_fifo.write(y1);
-        err_fifo.write(err1);
+        err_bram[i] = err1;
     }
 
     // run the hw
-    take_step(data_fifo, alpha_fifo, y_fifo, err_fifo, point2, alpha2, y2, err2, b,
+    take_step(data_fifo, alpha_fifo, y_fifo, err_bram, point2, alpha2, y2, err2, b,
             step_success);
 
     // check if the hw matches up

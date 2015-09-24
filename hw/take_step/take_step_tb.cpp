@@ -10,7 +10,7 @@
 #include <stdio.h>
 #include <hls_stream.h>
 
-#define TEST_ITERATIONS (10000)
+#define TEST_ITERATIONS (100000)
 
 static float randFloat(void) {
     return (float)rand() / RAND_MAX;
@@ -140,6 +140,7 @@ static bool sw_take_step(data_t & point1, data_t & point2, float err1, float err
 int main(void) {
     uint32_t i;
     uint32_t j;
+    uint32_t test_iteration;
     bool expected[PARTITION_ELEMENTS];
     hls::stream<data_t> data_fifo;
     hls::stream<float> alpha_fifo;
@@ -147,53 +148,54 @@ int main(void) {
     float err_bram [DIV_ELEMENTS];
     hls::stream<bool> step_success;
 
-    // generate random point2 data
-    float err2 = randFloat() * 100000;
-    bool y2 = randFloat() > 0.5;
-    float alpha2 = randFloat() * 5;
-    float b = randFloat() * 100000;
-    data_t point2;
+    for (test_iteration = 0; test_iteration < TEST_ITERATIONS; test_iteration++) {
+        // generate random point2 data
+        float err2 = randFloat() * 100000;
+        bool y2 = randFloat() > 0.5;
+        float alpha2 = randFloat() * 5;
+        float b = randFloat() * 100000;
+        data_t point2;
 
-    for (i = 0; i < DIMENSIONS; i++) {
-        point2.dim[i] = randFloat() * 10000;
-    }
-
-    // generate random data, compute the expected answer,
-    // and load the FIFOs for the take step
-    for (i = 0; i < PARTITION_ELEMENTS; i++) {
-        data_t point1;
-
-        // generate point1 data
-        for (j = 0; j < DIMENSIONS; j++) {
-            point1.dim[j] = randFloat() * 10000;
+        for (i = 0; i < DIMENSIONS; i++) {
+            point2.dim[i] = randFloat() * 10000;
         }
-        float err1 = randFloat() * 100000;
-        bool y1 = randFloat() > 0.5;
-        float alpha1 = randFloat() * 5;
 
-        // compute expected value
-        expected[i] = sw_take_step(point1, point2, err1, err2,
-                y1, y2, alpha1, alpha2, b);
+        // generate random data, compute the expected answer,
+        // and load the FIFOs for the take step
+        for (i = 0; i < PARTITION_ELEMENTS; i++) {
+            data_t point1;
 
-        // load up the FIFOs
-        data_fifo.write(point1);
-        alpha_fifo.write(alpha1);
-        y_fifo.write(y1);
-        err_bram[i] = err1;
-    }
+            // generate point1 data
+            for (j = 0; j < DIMENSIONS; j++) {
+                point1.dim[j] = randFloat() * 10000;
+            }
+            float err1 = randFloat() * 100000;
+            bool y1 = randFloat() > 0.5;
+            float alpha1 = randFloat() * 5;
 
-    // run the hw
-    take_step(data_fifo, alpha_fifo, y_fifo, err_bram, point2, alpha2, y2, err2, b,
-            step_success);
+            // compute expected value
+            expected[i] = sw_take_step(point1, point2, err1, err2,
+                    y1, y2, alpha1, alpha2, b);
 
-    // check if the hw matches up
-    for (i = 0; i < PARTITION_ELEMENTS; i++){
-        if (expected[i] != step_success.read()) {
-            printf("TEST FAILED! step mismatch\n");
-            return 1;
+            // load up the FIFOs
+            data_fifo.write(point1);
+            alpha_fifo.write(alpha1);
+            y_fifo.write(y1);
+            err_bram[i] = err1;
+        }
+
+        // run the hw
+        take_step(data_fifo, alpha_fifo, y_fifo, err_bram, point2, alpha2, y2, err2, b,
+                step_success);
+
+        // check if the hw matches up
+        for (i = 0; i < PARTITION_ELEMENTS; i++){
+            if (expected[i] != step_success.read()) {
+                printf("TEST FAILED! step mismatch\n");
+                return 1;
+            }
         }
     }
-
     printf("TEST PASSED!\n");
     return 0;
 }

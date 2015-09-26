@@ -257,7 +257,7 @@ int main(void) {
     expected_max_delta_e = 0;
     max_delta_e_idx = 0;
     for (i = 0; i < DIV_ELEMENTS; i++) {
-        step_success = sw_take_step(data[i], point2, e_bram[i], err2,
+        step_success = sw_take_step(data[i], point2, expected_e_bram[i], err2,
                 y[i], y2, alpha[i], alpha2, b);
 
         if (!step_success) {
@@ -292,8 +292,8 @@ int main(void) {
     for (i = 0; i < DIMENSIONS; i++) {
         unicast_send(point1.dim[i], in);
     }
-
     device(in, out, ddr);
+
     unicast_send(COMMAND_SET_POINT_2, in);
     for (i = 0; i < DIMENSIONS; i++) {
         unicast_send(point2.dim[i], in);
@@ -322,7 +322,45 @@ int main(void) {
     device(in, out, ddr);
 
     ////////////////////////////////////////////////////////////
-    ////////////////COMPUTE EVERYTHING//////////////////////////
+    ////////////////// READ BACK EVERYTHING ////////////////////
+    ////////////////////////////////////////////////////////////
+
+    for (i = 0; i < DIV_ELEMENTS; i++) {
+        data_t recv_data;
+        bool recv_y;
+        float recv_err;
+        float recv_alpha;
+
+        unicast_send(COMMAND_GET_POINT, in);
+        unicast_send(i, in);
+        device(in, out, ddr);
+        unicast_recv(recv_data, out);
+        unicast_recv(recv_y, out);
+        unicast_recv(recv_err, out);
+        unicast_recv(recv_alpha, out);
+
+        for (j = 0; j < DIMENSIONS; j++) {
+            if (ABS(recv_data.dim[j] - data[i].dim[j]) > ERROR) {
+                printf("TEST FAILED! KKT violator entry mismatch!\n");
+                return 1;
+            }
+        }
+        if (recv_y != y[i]) {
+            printf("TEST FAILED! y read back mismatch!\n");
+            return 1;
+        }
+        if (ABS(recv_err - e_bram[i]) > ERROR) {
+            printf("TEST FAILED! err read back mismatch!\n");
+            return 1;
+        }
+        if (ABS(recv_alpha - alpha[i]) > ERROR) {
+            printf("TEST FAILED! alpha read back mismatch!\n");
+            return 1;
+        }
+    }
+
+    ////////////////////////////////////////////////////////////
+    ////////////////////COMPUTE EVERYTHING//////////////////////
     ////////////////////////////////////////////////////////////
 
     // compute and get KKT violators

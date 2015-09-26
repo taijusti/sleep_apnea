@@ -61,7 +61,7 @@ static void alpha2_engine(hls::stream<float> & in_s_fifo,
         hls::stream<float> & in_high_fifo, hls::stream<float> & in_low_fifo,
         hls::stream<float> & in_alpha1_fifo, hls::stream<bool> & in_y1_fifo,
         hls::stream<float> & in_n_fifo, hls::stream<float> & in_k12_fifo,
-        float err1_bram [DIV_ELEMENTS], float y2, float err2, float alpha2, float b,
+        hls::stream<float> & err1_fifo, float y2, float err2, float alpha2, float b,
         hls::stream<float> & alpha2new_fifo, hls::stream<float> & out_high_fifo,
         hls::stream<float> & out_low_fifo) {
 #pragma HLS INLINE
@@ -72,7 +72,7 @@ static void alpha2_engine(hls::stream<float> & in_s_fifo,
     for (i = 0; i < DIV_ELEMENTS; i++) {
     #pragma HLS PIPELINE
 
-        float err1 = err1_bram[i];
+        float err1 = err1_fifo.read();
         float alpha1 = in_alpha1_fifo.read();
         float high = in_high_fifo.read();
         float low = in_low_fifo.read();
@@ -170,7 +170,7 @@ static void checker(hls::stream<data_t> & data, hls::stream<float> & high_fifo,
 }
 
 void take_step(hls::stream<data_t> & data_fifo, hls::stream<float> & alpha1_fifo,
-        hls::stream<bool> & y1_fifo, float e_bram [DIV_ELEMENTS], data_t & point2,
+        hls::stream<bool> & y1_fifo, hls::stream<float> & err1_fifo, data_t & point2,
         float alpha2, bool y2, float err2, float b, hls::stream<bool> & step_success) {
 #pragma HLS DATAFLOW
 
@@ -202,7 +202,7 @@ void take_step(hls::stream<data_t> & data_fifo, hls::stream<float> & alpha1_fifo
             hl_to_alpha2_y1_fifo);
     alpha2_engine(hl_to_alpha2_s_fifo, hl_to_alpha2_high_fifo, hl_to_alpha2_low_fifo,
            hl_to_alpha2_alpha1_fifo, hl_to_alpha2_y1_fifo,
-           n_to_alpha2_n_fifo, n_to_alpha2_k12_fifo, e_bram,
+           n_to_alpha2_n_fifo, n_to_alpha2_k12_fifo, err1_fifo,
            y2, err2, alpha2, b, alpha2_to_checker_alpha2_fifo,
            alpha2_to_checker_high_fifo, alpha2_to_checker_low_fifo);
     checker(n_to_checker_data_fifo, alpha2_to_checker_high_fifo,

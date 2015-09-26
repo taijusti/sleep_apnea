@@ -7,8 +7,9 @@
 #define TAKE_STEP_H
 
 #include "../common/common.h"
+#include <hls_stream.h>
 
 void take_step(hls::stream<data_t> & data_fifo, hls::stream<float> & alpha_fifo,
-        hls::stream<bool> & y_fifo, float e_bram [DIV_ELEMENTS], data_t & point2,
+        hls::stream<bool> & y_fifo, hls::stream<float> & err_fifo, data_t & point2,
         float alpha2, bool y2, float err2, float b, hls::stream<bool> & step_success);
 #endif

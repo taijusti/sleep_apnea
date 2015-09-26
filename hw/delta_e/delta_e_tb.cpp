@@ -12,8 +12,9 @@ float randFloat(void) {
 }
 
 int main(void) {
-    float e_bram [ELEMENTS];
-    float e;
+    hls::stream<float> e_fifo;
+    float err;
+    float target_e;
     float max_delta_e_theoretical = 0;
     float max_delta_e_actual = 0;
     uint32_t max_delta_e_idx_expected;
@@ -27,9 +28,10 @@ int main(void) {
         // randomly generate data
         max_delta_e_theoretical = 0;
         max_delta_e_idx_actual = 0;
-        e = randFloat();
+        target_e = randFloat();
         for (i = 0; i < DIV_ELEMENTS; i++) {
-            e_bram[i] = randFloat();
+            err = randFloat();
+            e_fifo.write(err);
             bool success = randFloat() > 0.5;
             step_success.write(success);
 
@@ -40,14 +42,14 @@ int main(void) {
             }
 
             // update max delta E as necessary
-            if (ABS(e_bram[i] - e) > max_delta_e_theoretical) {
-                max_delta_e_theoretical = ABS(e_bram[i] - e);
+            if (ABS(err - target_e) > max_delta_e_theoretical) {
+                max_delta_e_theoretical = ABS(err - target_e);
                 max_delta_e_idx_expected = i;
             }
         }
 
         // run the hardware
-        delta_e(step_success, e, e_bram, max_delta_e_actual, max_delta_e_idx_actual);
+        delta_e(step_success, target_e, e_fifo, max_delta_e_actual, max_delta_e_idx_actual);
 
         if (max_delta_e_actual != max_delta_e_theoretical) {
             printf("TEST FAILED! max delta e mismatch!\n");

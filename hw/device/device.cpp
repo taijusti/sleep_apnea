@@ -53,20 +53,6 @@ static void kkt_pipeline (data_t & point0, data_t & point1, hls::stream<data_t> 
     kkt(alpha_fifo, y_fifo, e_fifo, kkt_bram_fifo);
 }
 
-void BRAMtoFIFO (hls::stream<data_t> & data_fifo, data_t data [DIV_ELEMENTS], hls::stream<bool> & y_fifo,
-		bool y [DIV_ELEMENTS], hls::stream<float> & alpha_fifo, float alpha [DIV_ELEMENTS]) {
-#pragma HLS INLINE
-
-    int i;
-    bram2fifo:
-    for (i = 0; i < PARTITION_ELEMENTS; i++) {
-    #pragma HLS PIPELINE II=4
-            data_fifo.write(data[i]);
-            y_fifo.write(y[i] );
-            alpha_fifo.write(alpha[i]);
-    }
-}
-
 static void kkt_pipeline_wrapper (data_t & point0, data_t & point1, volatile data_t* start,
         float e_bram[DIV_ELEMENTS], float alpha [DIV_ELEMENTS], bool y [DIV_ELEMENTS],
         uint32_t kkt_fifo[DIV_ELEMENTS],
@@ -79,11 +65,16 @@ static void kkt_pipeline_wrapper (data_t & point0, data_t & point1, volatile dat
     #pragma HLS STREAM variable=y_fifo depth=70
     hls::stream<float> alpha_fifo;
     #pragma HLS STREAM variable=alpha_fifo depth=70
-    uint32_t i, j;
+    uint32_t i;
     data_t data[DIV_ELEMENTS];
 
     memcpy(data,(data_t*)start,DIV_ELEMENTS*sizeof(data_t));
-    BRAMtoFIFO(data_fifo,data,y_fifo,y,alpha_fifo,alpha);
+    for (i = 0; i < PARTITION_ELEMENTS; i++) {
+    #pragma HLS PIPELINE II=4
+            data_fifo.write(data[i]);
+            y_fifo.write(y[i] );
+            alpha_fifo.write(alpha[i]);
+    }
     kkt_pipeline(point0, point1, data_fifo, e_bram,
                  alpha_fifo, y_fifo, kkt_fifo,
                  y1_delta_alpha1_product, y2_delta_alpha2_product, delta_b);
@@ -105,17 +96,28 @@ static void take_step_pipeline(data_t & point2, float alpha2, bool y2,
         float err2, float b, volatile data_t* start,
         float e_bram[DIV_ELEMENTS], float alpha [DIV_ELEMENTS],
         bool y [DIV_ELEMENTS], float & max_delta_e, uint32_t & max_delta_e_idx) {
+#pragma HLS DATAFLOW
     hls::stream<bool> step_success;
     hls::stream<data_t> data_fifo;
     hls::stream<float> alpha_fifo;
     hls::stream<bool> y_fifo;
+    hls::stream<float> err1_fifo1;
+    hls::stream<float> err1_fifo2;
     data_t data [DIV_ELEMENTS];
+    uint32_t i;
 
     memcpy(data, (data_t*)start, DIV_ELEMENTS * sizeof(data_t));
-    BRAMtoFIFO(data_fifo, data, y_fifo, y, alpha_fifo, alpha);
-    take_step(data_fifo, alpha_fifo, y_fifo, e_bram, point2,
+    for (i = 0; i < PARTITION_ELEMENTS; i++) {
+    #pragma HLS PIPELINE
+            data_fifo.write(data[i]);
+            y_fifo.write(y[i] );
+            alpha_fifo.write(alpha[i]);
+            err1_fifo1.write(e_bram[i]);
+            err1_fifo2.write(e_bram[i]);
+    }
+    take_step(data_fifo, alpha_fifo, y_fifo, err1_fifo1, point2,
             alpha2, y2, err2,  b, step_success);
-    delta_e(step_success, err2, e_bram, max_delta_e, max_delta_e_idx);
+    delta_e(step_success, err2, err1_fifo2, max_delta_e, max_delta_e_idx);
 }
 
 void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, volatile data_t start[DIV_ELEMENTS]) {
@@ -137,8 +139,8 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, volatil
     static data_t point2;
     uint32_t kkt_bram [DIV_ELEMENTS + 1];
     static data_t x;
-    float max_delta_e;
-    uint32_t max_delta_e_idx;
+    static float max_delta_e;
+    static uint32_t max_delta_e_idx;
     uint32_t command;
     transmit_t temp;
     float alpha2;

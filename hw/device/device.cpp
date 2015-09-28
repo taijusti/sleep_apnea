@@ -3,6 +3,7 @@
 // ECE1373 Digital Systems Design for SoC
 // University of Toronto
 
+#include <ap_utils.h>
 #include "../device/device_inc.h"
 #include <stdbool.h>
 #include "../common/common.h"
@@ -93,7 +94,7 @@ void helper (unsigned int j, volatile data_t* start, data_t* x)
 }
 
 static void take_step_pipeline(data_t & point2, float alpha2, bool y2,
-        float err2, float b, volatile data_t* start,
+        float & err2, float b, volatile data_t* start,
         float e_bram[DIV_ELEMENTS], float alpha [DIV_ELEMENTS],
         bool y [DIV_ELEMENTS], float & max_delta_e, uint32_t & max_delta_e_idx) {
 #pragma HLS DATAFLOW
@@ -108,24 +109,25 @@ static void take_step_pipeline(data_t & point2, float alpha2, bool y2,
 
     memcpy(data, (data_t*)start, DIV_ELEMENTS * sizeof(data_t));
     for (i = 0; i < PARTITION_ELEMENTS; i++) {
-    #pragma HLS PIPELINE
+    #pragma HLS PIPELINE II=4
             data_fifo.write(data[i]);
-            y_fifo.write(y[i] );
+            y_fifo.write(y[i]);
             alpha_fifo.write(alpha[i]);
             err1_fifo1.write(e_bram[i]);
             err1_fifo2.write(e_bram[i]);
     }
+
     take_step(data_fifo, alpha_fifo, y_fifo, err1_fifo1, point2,
             alpha2, y2, err2,  b, step_success);
     delta_e(step_success, err2, err1_fifo2, max_delta_e, max_delta_e_idx);
 }
 
-void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, volatile data_t start[DIV_ELEMENTS]) {
+void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out,
+        volatile data_t start[DIV_ELEMENTS]) {
+#pragma HLS INTERFACE m_axi port=start
+#pragma HLS INTERFACE s_axilite port=return
 #pragma HLS INTERFACE axis depth=2048 port=out
 #pragma HLS INTERFACE axis depth=2048 port=in
-#pragma HLS INTERFACE ap_bus depth=10000 port=start
-#pragma HLS RESOURCE core=AXI4M variable=start
-#pragma HLS RESOURCE core=AXI4LiteS variable=return metadata="-bus_bundle LITE"
 
     unsigned int i;
     unsigned int j;
@@ -143,13 +145,14 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, volatil
     static uint32_t max_delta_e_idx;
     uint32_t command;
     transmit_t temp;
-    float alpha2;
-    bool y2;
-    float err2;
-    float b;
+    static float alpha2;
+    static bool y2;
+    static float err2;
+    static float b;
 
 #ifndef C_SIM
     while(1) {
+#pragma HLS PROTOCOL fixed
 #endif
         // get the command
         unicast_recv(command, in);
@@ -161,9 +164,6 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, volatil
             delta_b = 0;
 
             init_device(start, in, y, e_bram, alpha);
-
-            helper(0, start, &point1);
-            helper(1, start, &point2);
             break;
 
         case COMMAND_GET_KKT:
@@ -181,13 +181,24 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, volatil
             }
             break;
 
+        case COMMAND_SET_ALPHA2:
+            unicast_recv(alpha2, in);
+            break;
+
+        case COMMAND_SET_Y2:
+            unicast_recv(y2, in);
+            break;
+
+        case COMMAND_SET_ERR2:
+            unicast_recv(err2, in);
+            break;
+
+        case COMMAND_SET_B:
+            unicast_recv(b, in);
+            break;
+
         case COMMAND_GET_DELTA_E:
             // run the delta E pipeline
-            unicast_recv(alpha2, in);
-            unicast_recv(y2, in);
-            unicast_recv(err2, in);
-            unicast_recv(b, in);
-
             take_step_pipeline(point2, alpha2, y2, err2,  b, start,
                     e_bram, alpha, y, max_delta_e, max_delta_e_idx);
 
@@ -250,12 +261,12 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, volatil
 }
 
 #ifdef C_SIM
-void device2(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, volatile data_t start[DIV_ELEMENTS]) {
+void device2(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out,
+        volatile data_t start[DIV_ELEMENTS]) {
+#pragma HLS INTERFACE m_axi port=start
+#pragma HLS INTERFACE s_axilite port=return
 #pragma HLS INTERFACE axis depth=2048 port=out
 #pragma HLS INTERFACE axis depth=2048 port=in
-#pragma HLS INTERFACE ap_bus depth=10000 port=start
-#pragma HLS RESOURCE core=AXI4M variable=start
-#pragma HLS RESOURCE core=AXI4LiteS variable=return metadata="-bus_bundle LITE"
 
     unsigned int i;
     unsigned int j;
@@ -269,14 +280,14 @@ void device2(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, volati
     static data_t point2;
     uint32_t kkt_bram [DIV_ELEMENTS + 1];
     static data_t x;
-    float max_delta_e;
-    uint32_t max_delta_e_idx;
+    static float max_delta_e;
+    static uint32_t max_delta_e_idx;
     uint32_t command;
     transmit_t temp;
-    float alpha2;
-    bool y2;
-    float err2;
-    float b;
+    static float alpha2;
+    static bool y2;
+    static float err2;
+    static float b;
 
     // get the command
     unicast_recv(command, in);
@@ -288,9 +299,6 @@ void device2(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, volati
         delta_b = 0;
 
         init_device(start, in, y, e_bram, alpha);
-
-        helper(0, start, &point1);
-        helper(1, start, &point2);
         break;
 
     case COMMAND_GET_KKT:
@@ -308,13 +316,24 @@ void device2(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out, volati
         }
         break;
 
+    case COMMAND_SET_ALPHA2:
+        unicast_recv(alpha2, in);
+        break;
+
+    case COMMAND_SET_Y2:
+        unicast_recv(y2, in);
+        break;
+
+    case COMMAND_SET_ERR2:
+        unicast_recv(err2, in);
+        break;
+
+    case COMMAND_SET_B:
+        unicast_recv(b, in);
+        break;
+
     case COMMAND_GET_DELTA_E:
         // run the delta E pipeline
-        unicast_recv(alpha2, in);
-        unicast_recv(y2, in);
-        unicast_recv(err2, in);
-        unicast_recv(b, in);
-
         take_step_pipeline(point2, alpha2, y2, err2,  b, start,
                 e_bram, alpha, y, max_delta_e, max_delta_e_idx);
 

@@ -22,7 +22,7 @@
     #define ERROR (0.001)
     #define TOLERANCE (0.001)
     #define EPSILON (0.001)
-    #define NUM_DEVICES (2)
+    #define NUM_DEVICES (1)
     #define DIV_ELEMENTS (ELEMENTS/NUM_DEVICES)
     #define PARTITIONS (1)
     #define PARTITION_ELEMENTS (DIV_ELEMENTS / PARTITIONS)
@@ -41,6 +41,10 @@
     #define COMMAND_SET_DELTA_B           (10)
     #define COMMAND_GET_ALPHA             (11)
     #define COMMAND_SET_ALPHA             (12)
+    #define COMMAND_SET_ALPHA2            (13)
+    #define COMMAND_SET_Y2                (14)
+    #define COMMAND_SET_ERR2              (15)
+    #define COMMAND_SET_B                 (16)
 
     typedef union {
         uint32_t ui;

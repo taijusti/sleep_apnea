@@ -255,19 +255,31 @@ static void getKkt(uint32_t & num_kkt_viol, uint32_t kkt_viol [ELEMENTS],
 }
 
 static void getMaxDeltaE(float alpha2, bool y2, float err2, float b,
-        float & max_delta_e, uint32_t & point1_idx,
+        float & max_delta_e, uint32_t & point1_idx, data_t & point2,
         hls::stream<transmit_t> in[NUM_DEVICES],
         hls::stream<transmit_t> out[NUM_DEVICES]) {
+#pragma HLS INLINE off
     float device_max_delta_e [NUM_DEVICES];
     uint32_t device_max_delta_e_idx [NUM_DEVICES];
     uint32_t i;
 
     // get the max delta E
-    broadcast_send(COMMAND_GET_DELTA_E, out);
+    broadcast_send(COMMAND_SET_POINT_2, out);
+    broadcast_send(point2, out);
+    callAllDevice(in, out);
+    broadcast_send(COMMAND_SET_ALPHA2, out);
     broadcast_send(alpha2, out);
+    callAllDevice(in, out);
+    broadcast_send(COMMAND_SET_Y2, out);
     broadcast_send(y2, out);
+    callAllDevice(in, out);
+    broadcast_send(COMMAND_SET_ERR2, out);
     broadcast_send(err2, out);
+    callAllDevice(in, out);
+    broadcast_send(COMMAND_SET_B, out);
     broadcast_send(b, out);
+    callAllDevice(in, out);
+    broadcast_send(COMMAND_GET_DELTA_E, out);
 
     callAllDevice(in, out);
     ap_wait();
@@ -362,7 +374,9 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
             // get device(s) to find KKT violators. choose the first KKT
             // violator as the first point and flush the FIFO
             if (tempChanged) {
+                unicast_send(0x12345678, debug);
                 getKkt(num_kkt_viol, kkt_viol, in, out);
+                unicast_send(0x23456789, debug);
             }
 
             point2_set = false;
@@ -384,13 +398,14 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
             }
 
             // get all data associated with the first point
+            unicast_send(0xbad0cafe, debug);
             getPoint(point2_idx, point2, y2, alpha2, err2, in, out);
+            unicast_send(0xcafe0bad, debug);
 
             // get max delta e
-            broadcast_send(COMMAND_SET_POINT_2, out);
-            broadcast_send(point2, out);
-            callAllDevice(in, out);
-            getMaxDeltaE(alpha2, y2, err2, b, max_delta_e, point1_idx, in, out);
+            unicast_send(0xdeadbeef, debug);
+            getMaxDeltaE(alpha2, y2, err2, b, max_delta_e, point1_idx, point2, in, out);
+            unicast_send(0xbeefdead, debug);
 
             // get all data related to the second point
             if (max_delta_e <= 0) {
@@ -398,7 +413,9 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
                 continue;
             }
 
+            unicast_send(0x45678901, debug);
             getPoint(point1_idx, point1, y1, alpha1, err1, in, out);
+            unicast_send(0x56789012, debug);
 
             // at this point we have all the information we need for a single
             // iteration. compute the new alphas and b.
@@ -406,9 +423,11 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
             alpha2_old = alpha2;
             b_old = b;
 
+            unicast_send(0x67890123, debug);
             tempChanged = take_step(point1, alpha1, y1, err1,
                                     point2, alpha2, y2, err2, b,
                                     point1_idx, point2_idx);
+            unicast_send(0x78901234, debug);
 
             if (tempChanged) {
                 // update the alphas

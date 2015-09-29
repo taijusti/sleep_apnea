@@ -19,22 +19,22 @@
 
 using namespace std;
 
-static void init_device(volatile data_t* start, hls::stream<transmit_t> & in,
+static void init_device(data_t start [DIV_ELEMENTS], hls::stream<transmit_t> & in,
         bool y [DIV_ELEMENTS], float e_bram [DIV_ELEMENTS], float alpha [DIV_ELEMENTS]) {
 #pragma HLS DATAFLOW
 
     uint32_t i;
     uint32_t j;
-    data_t data [DIV_ELEMENTS];
+    //data_t data [DIV_ELEMENTS];
 
     // initialize the BRAMs
     for (i = 0; i < DIV_ELEMENTS; i++) {
-        unicast_recv(data[i], in);
+        unicast_recv(start[i], in);
         unicast_recv(y[i], in);
         e_bram[i] = y[i] ? -1 : 1; // note: e = -y
         alpha[i] = 0;
     }
-    memcpy((data_t *)start, (data_t *)(data), DIV_ELEMENTS * sizeof(data_t));
+    //memcpy((data_t *)start, (data_t *)(data), DIV_ELEMENTS * sizeof(data_t));
 }
 
 static void kkt_pipeline (data_t & point0, data_t & point1, hls::stream<data_t> & data_fifo,
@@ -48,13 +48,13 @@ static void kkt_pipeline (data_t & point0, data_t & point1, hls::stream<data_t> 
     hls::stream<float> k2_fifo;
     hls::stream<float> e_fifo;
 
-     // actual pipeline
+    // actual pipeline
     k(point0, point1, data_fifo, k1_fifo, k2_fifo);
     e(e_bram,e_fifo, k1_fifo, k2_fifo,y1_delta_alpha1_product, y2_delta_alpha2_product, delta_b);
     kkt(alpha_fifo, y_fifo, e_fifo, kkt_bram_fifo);
 }
 
-static void kkt_pipeline_wrapper (data_t & point0, data_t & point1, volatile data_t* start,
+static void kkt_pipeline_wrapper (data_t & point0, data_t & point1, data_t start [DIV_ELEMENTS],
         float e_bram[DIV_ELEMENTS], float alpha [DIV_ELEMENTS], bool y [DIV_ELEMENTS],
         uint32_t kkt_fifo[DIV_ELEMENTS],
         float y1_delta_alpha1_product, float y2_delta_alpha2_product,
@@ -69,10 +69,10 @@ static void kkt_pipeline_wrapper (data_t & point0, data_t & point1, volatile dat
     uint32_t i;
     data_t data[DIV_ELEMENTS];
 
-    memcpy(data,(data_t*)start,DIV_ELEMENTS*sizeof(data_t));
+    //memcpy(data,(data_t*)start,DIV_ELEMENTS*sizeof(data_t));
     for (i = 0; i < PARTITION_ELEMENTS; i++) {
     #pragma HLS PIPELINE II=4
-            data_fifo.write(data[i]);
+            data_fifo.write(start[i]);
             y_fifo.write(y[i] );
             alpha_fifo.write(alpha[i]);
     }
@@ -94,23 +94,29 @@ void helper (unsigned int j, volatile data_t* start, data_t* x)
 }
 
 static void take_step_pipeline(data_t & point2, float alpha2, bool y2,
-        float & err2, float b, volatile data_t* start,
+        float & err2, float b, data_t start [DIV_ELEMENTS],
         float e_bram[DIV_ELEMENTS], float alpha [DIV_ELEMENTS],
         bool y [DIV_ELEMENTS], float & max_delta_e, uint32_t & max_delta_e_idx) {
-#pragma HLS DATAFLOW
+    #pragma HLS DATAFLOW
     hls::stream<bool> step_success;
+    #pragma HLS STREAM variable=step_success depth=4096
     hls::stream<data_t> data_fifo;
+    #pragma HLS STREAM variable=data_fifo depth=4096
     hls::stream<float> alpha_fifo;
+    #pragma HLS STREAM variable=alpha_fifo depth=4096
     hls::stream<bool> y_fifo;
+    #pragma HLS STREAM variable=y_fifo depth=4096
     hls::stream<float> err1_fifo1;
+    #pragma HLS STREAM variable=err1_fifo1 depth=4096
     hls::stream<float> err1_fifo2;
-    data_t data [DIV_ELEMENTS];
+    #pragma HLS STREAM variable=err1_fifo2 depth=4096
     uint32_t i;
 
-    memcpy(data, (data_t*)start, DIV_ELEMENTS * sizeof(data_t));
+    //memcpy(data, (data_t*)start, DIV_ELEMENTS * sizeof(data_t));
+
     for (i = 0; i < PARTITION_ELEMENTS; i++) {
     #pragma HLS PIPELINE II=4
-            data_fifo.write(data[i]);
+            data_fifo.write(start[i]);
             y_fifo.write(y[i]);
             alpha_fifo.write(alpha[i]);
             err1_fifo1.write(e_bram[i]);
@@ -122,9 +128,7 @@ static void take_step_pipeline(data_t & point2, float alpha2, bool y2,
     delta_e(step_success, err2, err1_fifo2, max_delta_e, max_delta_e_idx);
 }
 
-void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out,
-        volatile data_t start[DIV_ELEMENTS]) {
-#pragma HLS INTERFACE m_axi port=start
+void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
 #pragma HLS INTERFACE s_axilite port=return
 #pragma HLS INTERFACE axis depth=2048 port=out
 #pragma HLS INTERFACE axis depth=2048 port=in
@@ -149,10 +153,10 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out,
     static bool y2;
     static float err2;
     static float b;
+    static data_t start [DIV_ELEMENTS];
 
 #ifndef C_SIM
     while(1) {
-#pragma HLS PROTOCOL fixed
 #endif
         // get the command
         unicast_recv(command, in);
@@ -199,6 +203,7 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out,
 
         case COMMAND_GET_DELTA_E:
             // run the delta E pipeline
+            max_delta_e = -1;
             take_step_pipeline(point2, alpha2, y2, err2,  b, start,
                     e_bram, alpha, y, max_delta_e, max_delta_e_idx);
 
@@ -209,8 +214,8 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out,
 
         case COMMAND_GET_POINT:
             unicast_recv(j, in);
-            helper(j,start,&x); // TODO: change x to more descriptive name
-            unicast_send(x, out);
+            //helper(j,start,&x); // TODO: change x to more descriptive name
+            unicast_send(start[j], out);
             unicast_send(y[j], out);
             unicast_send(e_bram[j], out);
             unicast_send(alpha[j], out);
@@ -261,8 +266,7 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out,
 }
 
 #ifdef C_SIM
-void device2(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out,
-        volatile data_t start[DIV_ELEMENTS]) {
+void device2(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
 #pragma HLS INTERFACE m_axi port=start
 #pragma HLS INTERFACE s_axilite port=return
 #pragma HLS INTERFACE axis depth=2048 port=out
@@ -288,6 +292,7 @@ void device2(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out,
     static bool y2;
     static float err2;
     static float b;
+    static data_t start [DIV_ELEMENTS];
 
     // get the command
     unicast_recv(command, in);
@@ -344,8 +349,8 @@ void device2(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out,
 
     case COMMAND_GET_POINT:
         unicast_recv(j, in);
-        helper(j,start,&x); // TODO: change x to more descriptive name
-        unicast_send(x, out);
+        //helper(j,start,&x); // TODO: change x to more descriptive name
+        unicast_send(start[j], out);
         unicast_send(y[j], out);
         unicast_send(e_bram[j], out);
         unicast_send(alpha[j], out);

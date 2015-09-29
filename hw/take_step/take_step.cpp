@@ -177,20 +177,31 @@ void take_step(hls::stream<data_t> & data_fifo, hls::stream<float> & alpha1_fifo
 
     // eta to alpha2 FIFOs
     hls::stream<float> n_to_alpha2_k12_fifo;
+#pragma HLS STREAM variable=n_to_alpha2_k12_fifo depth=4096
     hls::stream<float> n_to_alpha2_n_fifo;
+#pragma HLS STREAM variable=n_to_alpha2_n_fifo depth=4096
     hls::stream<data_t> n_to_checker_data_fifo;
+#pragma HLS STREAM variable=n_to_checker_data_fifo depth=4096
 
     // high-low to alpha2 FIFOs
     hls::stream<float> hl_to_alpha2_s_fifo;
+#pragma HLS STREAM variable=hl_to_alpha2_s_fifo depth=4096
     hls::stream<float> hl_to_alpha2_high_fifo;
+#pragma HLS STREAM variable=hl_to_alpha2_high_fifo depth=4096
     hls::stream<float> hl_to_alpha2_low_fifo;
+#pragma HLS STREAM variable=hl_to_alpha2_low_fifo depth=4096
     hls::stream<float> hl_to_alpha2_alpha1_fifo;
+#pragma HLS STREAM variable=hl_to_alpha2_alpha1_fifo depth=4096
     hls::stream<bool> hl_to_alpha2_y1_fifo;
+#pragma HLS STREAM variable=hl_to_alpha2_y1_fifo depth=4096
 
     // alpha2 to checker FIFOs
     hls::stream<float> alpha2_to_checker_alpha2_fifo;
+#pragma HLS STREAM variable=alpha2_to_checker_alpha2_fifo depth=4096
     hls::stream<float> alpha2_to_checker_high_fifo;
+#pragma HLS STREAM variable=alpha2_to_checker_high_fifo depth=4096
     hls::stream<float> alpha2_to_checker_low_fifo;
+#pragma HLS STREAM variable=alpha2_to_checker_low_fifo depth=4096
 
     // temp
     data_t point2_copy1 = point2;

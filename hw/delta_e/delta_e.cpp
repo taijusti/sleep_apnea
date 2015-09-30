@@ -18,7 +18,7 @@ void delta_e(hls::stream<bool> & step_success, float target_e, hls::stream<float
     float err;
 
     for (i = 0; i < DIV_ELEMENTS; i++) {
-    #pragma HLS PIPELINE II=4
+    #pragma HLS PIPELINE II=1
         err = err_fifo.read();
 
         if (step_success.read()) {

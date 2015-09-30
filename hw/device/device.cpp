@@ -29,6 +29,7 @@ static void init_device(data_t start [DIV_ELEMENTS], hls::stream<transmit_t> & i
 
     // initialize the BRAMs
     for (i = 0; i < DIV_ELEMENTS; i++) {
+    #pragma HLS PIPELINE II=1
         unicast_recv(start[i], in);
         unicast_recv(y[i], in);
         e_bram[i] = y[i] ? -1 : 1; // note: e = -y
@@ -71,7 +72,7 @@ static void kkt_pipeline_wrapper (data_t & point0, data_t & point1, data_t start
 
     //memcpy(data,(data_t*)start,DIV_ELEMENTS*sizeof(data_t));
     for (i = 0; i < PARTITION_ELEMENTS; i++) {
-    #pragma HLS PIPELINE II=4
+    #pragma HLS PIPELINE II=1
             data_fifo.write(start[i]);
             y_fifo.write(y[i] );
             alpha_fifo.write(alpha[i]);
@@ -115,7 +116,7 @@ static void take_step_pipeline(data_t & point2, float alpha2, bool y2,
     //memcpy(data, (data_t*)start, DIV_ELEMENTS * sizeof(data_t));
 
     for (i = 0; i < PARTITION_ELEMENTS; i++) {
-    #pragma HLS PIPELINE II=4
+    #pragma HLS PIPELINE II=1
             data_fifo.write(start[i]);
             y_fifo.write(y[i]);
             alpha_fifo.write(alpha[i]);
@@ -142,7 +143,9 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
     static float y2_delta_alpha2_product;
     static float delta_b;
     static data_t point1;
+    #pragma HLS ARRAY_PARTITION variable=point1.dim dim=1
     static data_t point2;
+    #pragma HLS ARRAY_PARTITION variable=point2.dim dim=1
     uint32_t kkt_bram [DIV_ELEMENTS + 1];
     static data_t x;
     static float max_delta_e;
@@ -154,6 +157,7 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
     static float err2;
     static float b;
     static data_t start [DIV_ELEMENTS];
+    #pragma HLS ARRAY_PARTITION variable=start factor=4 dim=2
 
 #ifndef C_SIM
     while(1) {

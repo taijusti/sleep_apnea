@@ -33,7 +33,7 @@ void kkt(hls::stream<float> & alpha_fifo, hls::stream<bool> & y_fifo,
 
     // find and record KKT violators
     for (i = 0; i < PARTITION_ELEMENTS; i++) {
-    #pragma HLS PIPELINE II=4
+    #pragma HLS PIPELINE II=1
     	if (!isKKT(alpha_fifo.read(), y_fifo.read(), e_fifo.read())) {
     		kkt_bram[violator_ctr + 1] = i;
             violator_ctr++;

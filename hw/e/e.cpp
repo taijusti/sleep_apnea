@@ -16,7 +16,7 @@ void e( float e_bram[DIV_ELEMENTS],
     unsigned short i;
 
     for (i = 0; i < PARTITION_ELEMENTS; i++) {
-    #pragma HLS PIPELINE II=4
+    #pragma HLS PIPELINE II=1
     	float temp = e_bram[i]
     	        + (y1_delta_alpha1_product * k0.read())
     	        + (y2_delta_alpha2_product * k1.read())

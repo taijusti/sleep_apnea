@@ -15,7 +15,7 @@ static void n_engine(hls::stream<data_t> & in_data_fifo, data_t & point2,
     uint32_t i;
 
     for (i = 0; i < DIV_ELEMENTS; i++) {
-    #pragma HLS PIPELINE II=4
+    #pragma HLS PIPELINE II=1
          data_t point1 = in_data_fifo.read();
 
          float k12 = k(point1, point2);
@@ -36,7 +36,7 @@ static void high_low(hls::stream<float> & in_alpha_fifo, hls::stream<bool> & in_
     uint32_t i;
 
     for (i = 0; i < DIV_ELEMENTS; i++) {
-    #pragma HLS PIPELINE II=4
+    #pragma HLS PIPELINE II=1
         float alpha1 = in_alpha_fifo.read();
         bool y1 = in_y1_fifo.read();
 
@@ -70,7 +70,7 @@ static void alpha2_engine(hls::stream<float> & in_s_fifo,
     float alpha2NewClipped;
 
     for (i = 0; i < DIV_ELEMENTS; i++) {
-    #pragma HLS PIPELINE II=4
+    #pragma HLS PIPELINE II=1
 
         float err1 = err1_fifo.read();
         float alpha1 = in_alpha1_fifo.read();
@@ -150,7 +150,7 @@ static void checker(hls::stream<data_t> & data, hls::stream<float> & high_fifo,
     bool changedSignificantly;
 
     for (i = 0; i < DIV_ELEMENTS; i++) {
-    #pragma HLS PIPELINE II=4
+    #pragma HLS PIPELINE II=1
         data_t point1 = data.read();
         float low = low_fifo.read();
         float high = high_fifo.read();

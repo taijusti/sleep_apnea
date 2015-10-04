@@ -64,9 +64,9 @@ static void kkt_pipeline_wrapper (data_t & point0, data_t & point1, data_t start
 
     hls::stream<data_t> data_fifo;
     hls::stream<bool> y_fifo;
-    #pragma HLS STREAM variable=y_fifo depth=70
+    #pragma HLS STREAM variable=y_fifo depth=100
     hls::stream<float> alpha_fifo;
-    #pragma HLS STREAM variable=alpha_fifo depth=70
+    #pragma HLS STREAM variable=alpha_fifo depth=100
     uint32_t i;
     data_t data[DIV_ELEMENTS];
 
@@ -85,11 +85,9 @@ static void kkt_pipeline_wrapper (data_t & point0, data_t & point1, data_t start
 
 void helper (unsigned int j, volatile data_t* start, data_t* x)
 {
-#ifndef C_SIM
+#ifdef __SYNTHESIS__
     memcpy(x,(data_t*)(start+(DIMENSIONS*j)),sizeof(data_t));
-#endif
-
-#ifdef C_SIM
+#else
     memcpy(x,(data_t*)(start+j),sizeof(data_t));
 #endif
 }
@@ -159,7 +157,7 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
     static data_t start [DIV_ELEMENTS];
     #pragma HLS ARRAY_PARTITION variable=start factor=4 dim=2
 
-#ifndef C_SIM
+#ifdef __SYNTHESIS__
     while(1) {
 #endif
         // get the command
@@ -264,12 +262,12 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
             // do nothing, break statement just to make compiler happy
             break;
         }
-#ifndef C_SIM
+#ifdef __SYNTHESIS__
     }
 #endif
 }
 
-#ifdef C_SIM
+#ifndef __SYNTHESIS__
 void device2(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
 #pragma HLS INTERFACE m_axi port=start
 #pragma HLS INTERFACE s_axilite port=return

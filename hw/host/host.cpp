@@ -15,7 +15,7 @@
 
 using namespace std;
 
-#ifdef C_SIM
+#ifndef __SYNTHESIS__
 #include "../device/device_inc.h"
 #endif
 
@@ -33,7 +33,7 @@ int rand_int (void) {
     return rnd_seed;
 }
 
-#ifdef C_SIM
+#ifndef __SYNTHESIS__
 bool take_step(data_t & point1, float & alpha1, bool y1, float err1,
         data_t & point2, float & alpha2, bool y2, float err2, float & b,
         uint32_t idx1, uint32_t idx2) {
@@ -172,7 +172,7 @@ static bool take_step(data_t & point1, float & alpha1, bool y1, float err1,
 // TODO: change back to take in array of fifos
 static void callDevice(hls::stream<transmit_t> in [NUM_DEVICES], hls::stream<transmit_t> out[NUM_DEVICES],
         uint32_t device_addr) {
-#ifdef C_SIM
+#ifndef __SYNTHESIS__
     static data_t ddr[NUM_DEVICES][DIV_ELEMENTS];
 
     if (device_addr == 0) {
@@ -185,7 +185,7 @@ static void callDevice(hls::stream<transmit_t> in [NUM_DEVICES], hls::stream<tra
 }
 
 static void callAllDevice(hls::stream<transmit_t> in[NUM_DEVICES], hls::stream<transmit_t> out[NUM_DEVICES]) {
-#ifdef C_SIM
+#ifndef __SYNTHESIS__
     uint32_t k;
     for (k = 0; k < NUM_DEVICES; k++) {
         callDevice(in, out, k);

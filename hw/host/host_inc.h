@@ -12,7 +12,7 @@
             bool y [ELEMENTS], hls::stream<transmit_t> in[NUM_DEVICES],
             hls::stream<transmit_t> out[NUM_DEVICES], hls::stream<transmit_t> & debug);
 
-    #ifdef C_SIM
+    #ifndef __SYNTHESIS__
         // exposed strictly for debug / c-simulation
         bool take_step(data_t & point1, float & alpha1, bool y1, float err1,
                 data_t & point2, float & alpha2, bool y2, float err2, float & b,

@@ -16,19 +16,24 @@ void delta_e(hls::stream<bool> & step_success, float target_e, hls::stream<float
     uint32_t i;
     float delta_e;
     float err;
+    bool enable;
+    bool success;
+    float local_max_delta_e = -1;
+    uint32_t local_max_delta_e_idx = 0;
 
     for (i = 0; i < DIV_ELEMENTS; i++) {
     #pragma HLS PIPELINE II=1
         err = err_fifo.read();
+        success = step_success.read();
+        delta_e = ABS(target_e - err);
+        enable = success && (delta_e > local_max_delta_e);
 
-        if (step_success.read()) {
-
-            delta_e = ABS(target_e - err);
-
-            if (delta_e > max_delta_e) {
-                max_delta_e = ABS(delta_e);
-                max_delta_e_idx = i;
-            }
+        if (enable) {
+            local_max_delta_e = delta_e;
+            local_max_delta_e_idx = i;
         }
     }
+
+    max_delta_e = local_max_delta_e;
+    max_delta_e_idx = local_max_delta_e_idx;
 }

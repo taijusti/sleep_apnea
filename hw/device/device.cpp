@@ -39,9 +39,9 @@ static void init_device(data_t start [DIV_ELEMENTS], hls::stream<transmit_t> & i
 }
 
 static void kkt_pipeline (data_t & point0, data_t & point1, hls::stream<data_t> & data_fifo,
-        float e_bram[DIV_ELEMENTS],
-        hls::stream<float> & alpha_fifo, hls::stream<bool> & y_fifo,
-        uint32_t kkt_bram_fifo[DIV_ELEMENTS], float y1_delta_alpha1_product, float y2_delta_alpha2_product,
+        float e_bram[DIV_ELEMENTS], hls::stream<float> & alpha_fifo,
+        hls::stream<bool> & y_fifo, uint32_t kkt_bram_fifo[DIV_ELEMENTS],
+        uint32_t & violators, float y1_delta_alpha1_product, float y2_delta_alpha2_product,
         float delta_b) {
 #pragma HLS INLINE
 
@@ -52,21 +52,21 @@ static void kkt_pipeline (data_t & point0, data_t & point1, hls::stream<data_t> 
     // actual pipeline
     k(point0, point1, data_fifo, k1_fifo, k2_fifo);
     e(e_bram,e_fifo, k1_fifo, k2_fifo,y1_delta_alpha1_product, y2_delta_alpha2_product, delta_b);
-    kkt(alpha_fifo, y_fifo, e_fifo, kkt_bram_fifo);
+    kkt(alpha_fifo, y_fifo, e_fifo, kkt_bram_fifo, violators);
 }
 
 static void kkt_pipeline_wrapper (data_t & point0, data_t & point1, data_t start [DIV_ELEMENTS],
         float e_bram[DIV_ELEMENTS], float alpha [DIV_ELEMENTS], bool y [DIV_ELEMENTS],
-        uint32_t kkt_fifo[DIV_ELEMENTS],
+        uint32_t kkt_fifo[DIV_ELEMENTS], uint32_t & violators,
         float y1_delta_alpha1_product, float y2_delta_alpha2_product,
         float delta_b) {
 #pragma HLS DATAFLOW
 
     hls::stream<data_t> data_fifo;
     hls::stream<bool> y_fifo;
-    #pragma HLS STREAM variable=y_fifo depth=100
+    #pragma HLS STREAM variable=y_fifo depth=128
     hls::stream<float> alpha_fifo;
-    #pragma HLS STREAM variable=alpha_fifo depth=100
+    #pragma HLS STREAM variable=alpha_fifo depth=128
     uint32_t i;
     data_t data[DIV_ELEMENTS];
 
@@ -78,7 +78,7 @@ static void kkt_pipeline_wrapper (data_t & point0, data_t & point1, data_t start
             alpha_fifo.write(alpha[i]);
     }
     kkt_pipeline(point0, point1, data_fifo, e_bram,
-                 alpha_fifo, y_fifo, kkt_fifo,
+                 alpha_fifo, y_fifo, kkt_fifo, violators,
                  y1_delta_alpha1_product, y2_delta_alpha2_product, delta_b);
 }
 
@@ -155,6 +155,7 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
     static float err2;
     static float b;
     static data_t start [DIV_ELEMENTS];
+    static uint32_t violators;
     #pragma HLS ARRAY_PARTITION variable=start factor=4 dim=2
 
 #ifdef __SYNTHESIS__
@@ -174,15 +175,15 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
 
         case COMMAND_GET_KKT:
             kkt_pipeline_wrapper(point1, point2, start, e_bram, alpha, y,
-                    kkt_bram, y1_delta_alpha1_product,
+                    kkt_bram, violators, y1_delta_alpha1_product,
                     y2_delta_alpha2_product, delta_b);
 
 
             // unicast_send off the # of kkt violators
-            unicast_send(kkt_bram[0], out);
+            unicast_send(violators, out);
 
             // unicast_send off the kkt violators
-            for (i = 1; i < kkt_bram[0] + 1; i++) {
+            for (i = 0; i < violators; i++) {
                 unicast_send(kkt_bram[i], out);
             }
             break;
@@ -269,7 +270,6 @@ void device(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
 
 #ifndef __SYNTHESIS__
 void device2(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
-#pragma HLS INTERFACE m_axi port=start
 #pragma HLS INTERFACE s_axilite port=return
 #pragma HLS INTERFACE axis depth=2048 port=out
 #pragma HLS INTERFACE axis depth=2048 port=in
@@ -283,7 +283,9 @@ void device2(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
     static float y2_delta_alpha2_product;
     static float delta_b;
     static data_t point1;
+    #pragma HLS ARRAY_PARTITION variable=point1.dim dim=1
     static data_t point2;
+    #pragma HLS ARRAY_PARTITION variable=point2.dim dim=1
     uint32_t kkt_bram [DIV_ELEMENTS + 1];
     static data_t x;
     static float max_delta_e;
@@ -295,6 +297,8 @@ void device2(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
     static float err2;
     static float b;
     static data_t start [DIV_ELEMENTS];
+    static uint32_t violators;
+    #pragma HLS ARRAY_PARTITION variable=start factor=4 dim=2
 
     // get the command
     unicast_recv(command, in);
@@ -310,15 +314,15 @@ void device2(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
 
     case COMMAND_GET_KKT:
         kkt_pipeline_wrapper(point1, point2, start, e_bram, alpha, y,
-                kkt_bram, y1_delta_alpha1_product,
+                kkt_bram, violators, y1_delta_alpha1_product,
                 y2_delta_alpha2_product, delta_b);
 
 
         // unicast_send off the # of kkt violators
-        unicast_send(kkt_bram[0], out);
+        unicast_send(violators, out);
 
         // unicast_send off the kkt violators
-        for (i = 1; i < kkt_bram[0] + 1; i++) {
+        for (i = 0; i < violators; i++) {
             unicast_send(kkt_bram[i], out);
         }
         break;
@@ -341,6 +345,7 @@ void device2(hls::stream<transmit_t> & in, hls::stream<transmit_t> & out) {
 
     case COMMAND_GET_DELTA_E:
         // run the delta E pipeline
+        max_delta_e = -1;
         take_step_pipeline(point2, alpha2, y2, err2,  b, start,
                 e_bram, alpha, y, max_delta_e, max_delta_e_idx);
 

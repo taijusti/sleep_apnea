@@ -27,7 +27,7 @@ static bool isKKT(float alpha, bool y, float e) {
 }
 
 void kkt(hls::stream<float> & alpha_fifo, hls::stream<bool> & y_fifo,
-		hls::stream<float> & e_fifo, uint32_t kkt_bram[DIV_ELEMENTS]) {
+		hls::stream<float> & e_fifo, uint32_t kkt_bram[DIV_ELEMENTS], uint32_t & violators) {
     uint32_t i, j = 0;
     uint32_t violator_ctr = 0;
 
@@ -35,10 +35,9 @@ void kkt(hls::stream<float> & alpha_fifo, hls::stream<bool> & y_fifo,
     for (i = 0; i < PARTITION_ELEMENTS; i++) {
     #pragma HLS PIPELINE II=1
     	if (!isKKT(alpha_fifo.read(), y_fifo.read(), e_fifo.read())) {
-    		kkt_bram[violator_ctr + 1] = i;
+    		kkt_bram[violator_ctr] = i;
             violator_ctr++;
         }
-
-    	kkt_bram[0] = violator_ctr;
     }
+    violators = violator_ctr;
 }

@@ -4,7 +4,9 @@
 // University of Toronto
 #include "../common/common.h"
 
-void broadcast_send(uint32_t ui, hls::stream<transmit_t> fifo[NUM_DEVICES]) {
+using namespace hls;
+
+void broadcast_send(uint32_t ui, stream<transmit_t> fifo[NUM_DEVICES]) {
 #pragma HLS INLINE
     uint32_t k;
     transmit_t temp;
@@ -16,7 +18,7 @@ void broadcast_send(uint32_t ui, hls::stream<transmit_t> fifo[NUM_DEVICES]) {
     }
 }
 
-void broadcast_send(int32_t i, hls::stream<transmit_t> fifo[NUM_DEVICES]) {
+void broadcast_send(int32_t i, stream<transmit_t> fifo[NUM_DEVICES]) {
 #pragma HLS INLINE
     uint32_t k;
     transmit_t temp;
@@ -28,7 +30,7 @@ void broadcast_send(int32_t i, hls::stream<transmit_t> fifo[NUM_DEVICES]) {
     }
 }
 
-void broadcast_send(bool y, hls::stream<transmit_t> fifo[NUM_DEVICES]) {
+void broadcast_send(bool y, stream<transmit_t> fifo[NUM_DEVICES]) {
 #pragma HLS INLINE
     uint32_t k;
     transmit_t temp;
@@ -40,7 +42,7 @@ void broadcast_send(bool y, hls::stream<transmit_t> fifo[NUM_DEVICES]) {
     }
 }
 
-void broadcast_send(float f, hls::stream<transmit_t> fifo[NUM_DEVICES]) {
+void broadcast_send(float f, stream<transmit_t> fifo[NUM_DEVICES]) {
 #pragma HLS INLINE
     uint32_t k;
     transmit_t temp;
@@ -52,7 +54,7 @@ void broadcast_send(float f, hls::stream<transmit_t> fifo[NUM_DEVICES]) {
     }
 }
 
-void broadcast_send(data_t &point, hls::stream<transmit_t> fifo[NUM_DEVICES]) {
+void broadcast_send(data_t &point, stream<transmit_t> fifo[NUM_DEVICES]) {
 #pragma HLS INLINE
     uint32_t i, k;
 
@@ -64,35 +66,35 @@ void broadcast_send(data_t &point, hls::stream<transmit_t> fifo[NUM_DEVICES]) {
     }
 }
 
-void unicast_send(uint32_t ui, hls::stream<transmit_t> & out) {
+void unicast_send(uint32_t ui, stream<transmit_t> & out) {
 #pragma HLS INLINE
     transmit_t temp;
     temp.ui = ui;
     out.write(temp);
 }
 
-void unicast_send(int32_t i, hls::stream<transmit_t> & out) {
+void unicast_send(int32_t i, stream<transmit_t> & out) {
 #pragma HLS INLINE
     transmit_t temp;
     temp.i = i;
     out.write(temp);
 }
 
-void unicast_send(bool y, hls::stream<transmit_t> & out) {
+void unicast_send(bool y, stream<transmit_t> & out) {
 #pragma HLS INLINE
     transmit_t temp;
     temp.b = y;
     out.write(temp);
 }
 
-void unicast_send(float f, hls::stream<transmit_t> & out) {
+void unicast_send(float f, stream<transmit_t> & out) {
 #pragma HLS INLINE
     transmit_t temp;
     temp.i = (int32_t)(f * 65536);
     out.write(temp);
 }
 
-void unicast_send(data_t &point, hls::stream<transmit_t> & out) {
+void unicast_send(data_t &point, stream<transmit_t> & out) {
 #pragma HLS INLINE
     uint32_t i;
 
@@ -101,7 +103,7 @@ void unicast_send(data_t &point, hls::stream<transmit_t> & out) {
     }
 }
 
-void broadcast_recv(uint32_t ui[NUM_DEVICES], hls::stream<transmit_t> fifo[NUM_DEVICES]) {
+void broadcast_recv(uint32_t ui[NUM_DEVICES], stream<transmit_t> fifo[NUM_DEVICES]) {
 #pragma HLS INLINE
     uint32_t k;
 
@@ -111,7 +113,7 @@ void broadcast_recv(uint32_t ui[NUM_DEVICES], hls::stream<transmit_t> fifo[NUM_D
     }
 }
 
-void broadcast_recv(int32_t i[NUM_DEVICES], hls::stream<transmit_t> fifo[NUM_DEVICES]) {
+void broadcast_recv(int32_t i[NUM_DEVICES], stream<transmit_t> fifo[NUM_DEVICES]) {
 #pragma HLS INLINE
     uint32_t k;
 
@@ -121,7 +123,7 @@ void broadcast_recv(int32_t i[NUM_DEVICES], hls::stream<transmit_t> fifo[NUM_DEV
     }
 }
 
-void broadcast_recv(bool y[NUM_DEVICES], hls::stream<transmit_t> fifo[NUM_DEVICES]) {
+void broadcast_recv(bool y[NUM_DEVICES], stream<transmit_t> fifo[NUM_DEVICES]) {
 #pragma HLS INLINE
     uint32_t k;
 
@@ -131,7 +133,7 @@ void broadcast_recv(bool y[NUM_DEVICES], hls::stream<transmit_t> fifo[NUM_DEVICE
     }
 }
 
-void broadcast_recv(float f[NUM_DEVICES], hls::stream<transmit_t> fifo[NUM_DEVICES]) {
+void broadcast_recv(float f[NUM_DEVICES], stream<transmit_t> fifo[NUM_DEVICES]) {
 #pragma HLS INLINE
     uint32_t k;
 
@@ -141,7 +143,7 @@ void broadcast_recv(float f[NUM_DEVICES], hls::stream<transmit_t> fifo[NUM_DEVIC
     }
 }
 
-void broadcast_recv(data_t point[NUM_DEVICES], hls::stream<transmit_t> fifo[NUM_DEVICES]) {
+void broadcast_recv(data_t point[NUM_DEVICES], stream<transmit_t> fifo[NUM_DEVICES]) {
 #pragma HLS INLINE
     uint32_t i, k;
     for (k = 0; k < NUM_DEVICES; k++) {
@@ -152,27 +154,27 @@ void broadcast_recv(data_t point[NUM_DEVICES], hls::stream<transmit_t> fifo[NUM_
     }
 }
 
-void unicast_recv(uint32_t &ui, hls::stream<transmit_t> & in) {
+void unicast_recv(uint32_t &ui, stream<transmit_t> & in) {
 #pragma HLS INLINE
     ui = in.read().ui;
 }
 
-void unicast_recv(int32_t &i, hls::stream<transmit_t> & in) {
+void unicast_recv(int32_t &i, stream<transmit_t> & in) {
 #pragma HLS INLINE
     i = in.read().i;
 }
 
-void unicast_recv(bool &y, hls::stream<transmit_t> & in) {
+void unicast_recv(bool &y, stream<transmit_t> & in) {
 #pragma HLS INLINE
     y = in.read().b;
 }
 
-void unicast_recv(float &f, hls::stream<transmit_t> & in) {
+void unicast_recv(float &f, stream<transmit_t> & in) {
 #pragma HLS INLINE
     f = (in.read().i * 1.0) / 65536;
 }
 
-void unicast_recv(data_t &point, hls::stream<transmit_t> & in) {
+void unicast_recv(data_t &point, stream<transmit_t> & in) {
 #pragma HLS INLINE
     uint32_t i;
 

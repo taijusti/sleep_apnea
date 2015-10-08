@@ -14,8 +14,10 @@
     #include "../k/k_inc.h"
     #include <stdint.h>
 
-    void device(hls::stream<transmit_t> &in, hls::stream<transmit_t> &out);
+    using namespace hls;
+
+    void device(stream<transmit_t> &in, stream<transmit_t> &out);
     #ifndef __SYNTHESIS__
-        void device2(hls::stream<transmit_t> &in, hls::stream<transmit_t> &out);
+        void device2(stream<transmit_t> &in, stream<transmit_t> &out);
     #endif
 #endif

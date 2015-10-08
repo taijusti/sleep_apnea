@@ -375,7 +375,7 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
         for (i = 0; i < ELEMENTS; i++) {
             // get device(s) to find KKT violators. choose the first KKT
             // violator as the first point and flush the FIFO
-            getKkt(i, tempChanged, point2_idx, in, out);
+            getKkt(tempChanged, i, point2_idx, in, out);
 
             // no kkt violators, exit!
             if (point2_idx == -1) {

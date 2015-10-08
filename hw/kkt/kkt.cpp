@@ -42,7 +42,7 @@ void kkt(stream<float> & alpha_fifo, stream<bool> & y_fifo,
     #pragma HLS PIPELINE II=1
         element_idx = offset + i;
         enable = !isKKT(alpha_fifo.read(), y_fifo.read(), e_fifo.read())
-                && element_idx > smo_iteration
+                && element_idx >= smo_iteration
                 && !written;
 
     	if (enable) {

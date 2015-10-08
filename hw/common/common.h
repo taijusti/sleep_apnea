@@ -9,10 +9,12 @@
     #include <stdint.h>
     #include <hls_stream.h>
 
+    using namespace hls;
+
     #define ABS(a) ((a) < 0 ? -(a) : (a))
     #define MAX(a,b) ((a) > (b) ? (a) : (b))
     #define MIN(a,b) ((a) < (b) ? (a) : (b))
-    #define ELEMENTS (4096)
+    #define ELEMENTS (2048)
     #define DIMENSIONS (4)
     #define C (5)
     #define ERROR (0.001)
@@ -53,24 +55,24 @@
         float dim [DIMENSIONS];
     } data_t;
 
-    void broadcast_send(uint32_t ui, hls::stream<transmit_t> fifo[NUM_DEVICES]);
-    void broadcast_send(int32_t i, hls::stream<transmit_t> fifo[NUM_DEVICES]);
-    void broadcast_send(bool b, hls::stream<transmit_t> fifo[NUM_DEVICES]);
-    void broadcast_send(float f, hls::stream<transmit_t> fifo[NUM_DEVICES]);
-    void broadcast_send(data_t &point, hls::stream<transmit_t> fifo[NUM_DEVICES]);
-    void unicast_send(uint32_t ui, hls::stream<transmit_t> & out);
-    void unicast_send(int32_t i, hls::stream<transmit_t> & out);
-    void unicast_send(bool y, hls::stream<transmit_t> & out);
-    void unicast_send(float f, hls::stream<transmit_t> & out);
-    void unicast_send(data_t &point, hls::stream<transmit_t> & out);
-    void broadcast_recv(uint32_t ui[NUM_DEVICES], hls::stream<transmit_t> fifo[NUM_DEVICES]);
-    void broadcast_recv(int32_t i[NUM_DEVICES], hls::stream<transmit_t> fifo[NUM_DEVICES]);
-    void broadcast_recv(bool b[NUM_DEVICES], hls::stream<transmit_t> fifo[NUM_DEVICES]);
-    void broadcast_recv(float f[NUM_DEVICES], hls::stream<transmit_t> fifo[NUM_DEVICES]);
-    void broadcast_recv(data_t point[NUM_DEVICES], hls::stream<transmit_t> fifo[NUM_DEVICES]);
-    void unicast_recv(uint32_t &ui, hls::stream<transmit_t> & in);
-    void unicast_recv(int32_t &i, hls::stream<transmit_t> & in);
-    void unicast_recv(bool &y, hls::stream<transmit_t> & in);
-    void unicast_recv(float &f, hls::stream<transmit_t> & in);
-    void unicast_recv(data_t &point, hls::stream<transmit_t> & in);
+    void broadcast_send(uint32_t ui, stream<transmit_t> fifo[NUM_DEVICES]);
+    void broadcast_send(int32_t i, stream<transmit_t> fifo[NUM_DEVICES]);
+    void broadcast_send(bool b, stream<transmit_t> fifo[NUM_DEVICES]);
+    void broadcast_send(float f, stream<transmit_t> fifo[NUM_DEVICES]);
+    void broadcast_send(data_t &point, stream<transmit_t> fifo[NUM_DEVICES]);
+    void unicast_send(uint32_t ui, stream<transmit_t> & out);
+    void unicast_send(int32_t i, stream<transmit_t> & out);
+    void unicast_send(bool y, stream<transmit_t> & out);
+    void unicast_send(float f, stream<transmit_t> & out);
+    void unicast_send(data_t &point, stream<transmit_t> & out);
+    void broadcast_recv(uint32_t ui[NUM_DEVICES], stream<transmit_t> fifo[NUM_DEVICES]);
+    void broadcast_recv(int32_t i[NUM_DEVICES], stream<transmit_t> fifo[NUM_DEVICES]);
+    void broadcast_recv(bool b[NUM_DEVICES], stream<transmit_t> fifo[NUM_DEVICES]);
+    void broadcast_recv(float f[NUM_DEVICES], stream<transmit_t> fifo[NUM_DEVICES]);
+    void broadcast_recv(data_t point[NUM_DEVICES], stream<transmit_t> fifo[NUM_DEVICES]);
+    void unicast_recv(uint32_t &ui, stream<transmit_t> & in);
+    void unicast_recv(int32_t &i, stream<transmit_t> & in);
+    void unicast_recv(bool &y, stream<transmit_t> & in);
+    void unicast_recv(float &f, stream<transmit_t> & in);
+    void unicast_recv(data_t &point, stream<transmit_t> & in);
 #endif

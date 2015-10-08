@@ -9,8 +9,9 @@
 #include <hls_stream.h>
 
 using namespace std;
+using namespace hls;
 
-void delta_e(hls::stream<bool> & step_success, float target_e, hls::stream<float> & err_fifo,
+void delta_e(stream<bool> & step_success, float target_e, stream<float> & err_fifo,
         float & max_delta_e, uint32_t & max_delta_e_idx) {
     #pragma HLS INLINE
     uint32_t i;

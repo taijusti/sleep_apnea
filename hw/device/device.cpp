@@ -133,8 +133,8 @@ static void take_step_pipeline(data_t & point2, float alpha2, bool y2,
 
 void device(stream<transmit_t> & in, stream<transmit_t> & out) {
 #pragma HLS INTERFACE s_axilite port=return
-#pragma HLS INTERFACE axis depth=2048 port=out
-#pragma HLS INTERFACE axis depth=2048 port=in
+#pragma HLS INTERFACE axis port=out
+#pragma HLS INTERFACE axis port=in
 
     unsigned int i;
     unsigned int j;
@@ -277,10 +277,6 @@ void device(stream<transmit_t> & in, stream<transmit_t> & out) {
 #ifndef __SYNTHESIS__
 
 void device2(stream<transmit_t> & in, stream<transmit_t> & out) {
-#pragma HLS INTERFACE s_axilite port=return
-#pragma HLS INTERFACE axis depth=2048 port=out
-#pragma HLS INTERFACE axis depth=2048 port=in
-
     unsigned int i;
     unsigned int j;
     static float alpha[DIV_ELEMENTS];

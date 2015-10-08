@@ -14,6 +14,7 @@
 #include <ap_utils.h>
 
 using namespace std;
+using namespace hls;
 
 #ifndef __SYNTHESIS__
 #include "../device/device_inc.h"
@@ -170,7 +171,7 @@ static bool take_step(data_t & point1, float & alpha1, bool y1, float err1,
 }
 
 // TODO: change back to take in array of fifos
-static void callDevice(hls::stream<transmit_t> in [NUM_DEVICES], hls::stream<transmit_t> out[NUM_DEVICES],
+static void callDevice(stream<transmit_t> in [NUM_DEVICES], stream<transmit_t> out[NUM_DEVICES],
         uint32_t device_addr) {
 #ifndef __SYNTHESIS__
     static data_t ddr[NUM_DEVICES][DIV_ELEMENTS];
@@ -184,7 +185,7 @@ static void callDevice(hls::stream<transmit_t> in [NUM_DEVICES], hls::stream<tra
 #endif
 }
 
-static void callAllDevice(hls::stream<transmit_t> in[NUM_DEVICES], hls::stream<transmit_t> out[NUM_DEVICES]) {
+static void callAllDevice(stream<transmit_t> in[NUM_DEVICES], stream<transmit_t> out[NUM_DEVICES]) {
 #ifndef __SYNTHESIS__
     uint32_t k;
     for (k = 0; k < NUM_DEVICES; k++) {
@@ -194,7 +195,7 @@ static void callAllDevice(hls::stream<transmit_t> in[NUM_DEVICES], hls::stream<t
 }
 
 static void getPoint(uint32_t idx, data_t & point, bool & y, float & alpha, float & err,
-        hls::stream<transmit_t> in[NUM_DEVICES], hls::stream<transmit_t> out[NUM_DEVICES]) {
+        stream<transmit_t> in[NUM_DEVICES], stream<transmit_t> out[NUM_DEVICES]) {
 #pragma HLS INLINE off
     uint32_t i;
     uint32_t device_idx = idx % DIV_ELEMENTS;
@@ -221,15 +222,18 @@ static void getPoint(uint32_t idx, data_t & point, bool & y, float & alpha, floa
     unicast_recv(alpha, in[device_addr]);
 }
 
-static void getKkt(uint32_t & num_kkt_viol, uint32_t kkt_viol [ELEMENTS],
-        hls::stream<transmit_t> in[NUM_DEVICES], hls::stream<transmit_t> out [NUM_DEVICES]) {
+static void getKkt(bool err_bram_write_en, uint32_t smo_iteration,
+        int32_t & violator_idx, stream<transmit_t> in[NUM_DEVICES],
+        stream<transmit_t> out [NUM_DEVICES]) {
 #pragma HLS INLINE off
     uint32_t i;
-    uint32_t j;
-    uint32_t device_num_kkt_viol [NUM_DEVICES];
+    int32_t violator_indicies [NUM_DEVICES];
+    int32_t local_violator_idx;
 
     // broadcast the command to get KKT violators to all devices
     broadcast_send(COMMAND_GET_KKT, out);
+    broadcast_send(err_bram_write_en, out);
+    broadcast_send(smo_iteration, out);
 
     // wait for the device to respond
     callAllDevice(in, out);
@@ -237,27 +241,22 @@ static void getKkt(uint32_t & num_kkt_viol, uint32_t kkt_viol [ELEMENTS],
     ap_wait(); // TODO: check if it is still necessary to have to ap_wait()
 
     // get the number of kkt violators
-    broadcast_recv(device_num_kkt_viol, in);
-    num_kkt_viol = 0;
-    for (i = 0; i < NUM_DEVICES; i++) {
-        num_kkt_viol += device_num_kkt_viol[i];
-    }
-
-    // get the kkt violators
-    for (i = 0; i < NUM_DEVICES; i++) {
-        for (j = 0; j < device_num_kkt_viol[i]; j++) {
-            uint32_t idx = (i * device_num_kkt_viol[i]) + j;
-            uint32_t temp;
-            unicast_recv(temp, in[i]);
-            kkt_viol[idx] = temp + (i * DIV_ELEMENTS);
+    broadcast_recv(violator_indicies, in);
+    local_violator_idx = violator_indicies[0];
+    for (i = 1; i < NUM_DEVICES; i++) {
+        if (violator_indicies[i] != -1
+                && violator_indicies[i] < local_violator_idx) {
+            local_violator_idx = violator_indicies[i];
         }
     }
+
+    violator_idx = local_violator_idx;
 }
 
 static void getMaxDeltaE(float alpha2, bool y2, float err2, float b,
         float & max_delta_e, uint32_t & point1_idx, data_t & point2,
-        hls::stream<transmit_t> in[NUM_DEVICES],
-        hls::stream<transmit_t> out[NUM_DEVICES]) {
+        stream<transmit_t> in[NUM_DEVICES],
+        stream<transmit_t> out[NUM_DEVICES]) {
 #pragma HLS INLINE off
     float device_max_delta_e [NUM_DEVICES];
     uint32_t device_max_delta_e_idx [NUM_DEVICES];
@@ -303,8 +302,8 @@ static void getMaxDeltaE(float alpha2, bool y2, float err2, float b,
 }
 
 void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
-        bool y [ELEMENTS], hls::stream<transmit_t> in[NUM_DEVICES],
-        hls::stream<transmit_t> out[NUM_DEVICES], hls::stream<transmit_t> & debug) {
+        bool y [ELEMENTS], stream<transmit_t> in[NUM_DEVICES],
+        stream<transmit_t> out[NUM_DEVICES], stream<transmit_t> & debug) {
 #pragma HLS INTERFACE s_axilite port=return bundle=axi_bus
 #pragma HLS INTERFACE axis port=out
 #pragma HLS INTERFACE axis port=in
@@ -329,7 +328,7 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
     data_t point2;
     #pragma HLS ARRAY_PARTITION variable=point2.dim complete dim=1
     bool y2;
-    uint32_t point2_idx;
+    int32_t point2_idx;
     float err2;
     uint32_t kkt_viol[ELEMENTS];
     float max_delta_e;
@@ -346,6 +345,7 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
     b = 0;
     for (i = 0; i < NUM_DEVICES; i++) {
         unicast_send(COMMAND_INIT_DATA, out[i]);
+        unicast_send(i * DIV_ELEMENTS, out[i]);
 
         for (j = 0; j < DIV_ELEMENTS; j++) {
             uint32_t idx = (i * DIV_ELEMENTS) + j;
@@ -375,24 +375,10 @@ void host(data_t data [ELEMENTS], float alpha [ELEMENTS], float & b,
         for (i = 0; i < ELEMENTS; i++) {
             // get device(s) to find KKT violators. choose the first KKT
             // violator as the first point and flush the FIFO
-            if (tempChanged) {
-                getKkt(num_kkt_viol, kkt_viol, in, out);
-            }
-
-            point2_set = false;
-            for (j = 0; j < num_kkt_viol; j++) {
-                uint32_t temp;
-                temp = kkt_viol[j];
-                if (temp >= i && !point2_set) {
-                    i = temp;
-                    point2_idx = temp;
-                    point2_set = true;
-                    break;
-                }
-            }
+            getKkt(i, tempChanged, point2_idx, in, out);
 
             // no kkt violators, exit!
-            if (!point2_set) {
+            if (point2_idx == -1) {
                 tempChanged = false;
                 break;
             }

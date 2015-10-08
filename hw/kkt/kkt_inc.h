@@ -10,6 +10,6 @@
     #include <stdint.h>
 
     void kkt(hls::stream<float> & alpha_fifo, hls::stream<bool> & y_fifo,
-            hls::stream<float> & e_fifo, uint32_t kkt_bram[DIV_ELEMENTS],
-            uint32_t & violators);
+            hls::stream<float> & e_fifo, uint32_t smo_iteration, uint32_t offset,
+            int32_t & violator_idx);
 #endif

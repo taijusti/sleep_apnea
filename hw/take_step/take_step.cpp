@@ -7,10 +7,12 @@
 #include "../k/k_inc.h"
 #include <hls_stream.h>
 
+using namespace hls;
+
 // engine to compute n
-static void n_engine(hls::stream<data_t> & in_data_fifo, data_t & point2,
-        hls::stream<float> & k12_fifo, hls::stream<float> & n_fifo,
-        hls::stream<data_t> & out_data_fifo) {
+static void n_engine(stream<data_t> & in_data_fifo, data_t & point2,
+        stream<float> & k12_fifo, stream<float> & n_fifo,
+        stream<data_t> & out_data_fifo) {
 #pragma HLS INLINE
     uint32_t i;
 
@@ -27,10 +29,10 @@ static void n_engine(hls::stream<data_t> & in_data_fifo, data_t & point2,
 }
 
 // engine to compute high/low
-static void high_low(hls::stream<float> & in_alpha_fifo, hls::stream<bool> & in_y1_fifo,
-        float y2, float alpha2, hls::stream<float> & s, hls::stream<float> & high,
-        hls::stream<float> & low, hls::stream<float> & out_alpha_fifo,
-        hls::stream<bool> & out_y_fifo) {
+static void high_low(stream<float> & in_alpha_fifo, stream<bool> & in_y1_fifo,
+        float y2, float alpha2, stream<float> & s, stream<float> & high,
+        stream<float> & low, stream<float> & out_alpha_fifo,
+        stream<bool> & out_y_fifo) {
 #pragma HLS INLINE
 
     uint32_t i;
@@ -57,13 +59,13 @@ static void high_low(hls::stream<float> & in_alpha_fifo, hls::stream<bool> & in_
 }
 
 // engine to compute alpha2 clipped
-static void alpha2_engine(hls::stream<float> & in_s_fifo,
-        hls::stream<float> & in_high_fifo, hls::stream<float> & in_low_fifo,
-        hls::stream<float> & in_alpha1_fifo, hls::stream<bool> & in_y1_fifo,
-        hls::stream<float> & in_n_fifo, hls::stream<float> & in_k12_fifo,
-        hls::stream<float> & err1_fifo, float y2, float err2, float alpha2, float b,
-        hls::stream<float> & alpha2new_fifo, hls::stream<float> & out_high_fifo,
-        hls::stream<float> & out_low_fifo) {
+static void alpha2_engine(stream<float> & in_s_fifo,
+        stream<float> & in_high_fifo, stream<float> & in_low_fifo,
+        stream<float> & in_alpha1_fifo, stream<bool> & in_y1_fifo,
+        stream<float> & in_n_fifo, stream<float> & in_k12_fifo,
+        stream<float> & err1_fifo, float y2, float err2, float alpha2, float b,
+        stream<float> & alpha2new_fifo, stream<float> & out_high_fifo,
+        stream<float> & out_low_fifo) {
 #pragma HLS INLINE
 
     uint32_t i;
@@ -139,9 +141,9 @@ static bool equals(data_t & point1, data_t & point2) {
     return equals;
 }
 
-static void checker(hls::stream<data_t> & data, hls::stream<float> & high_fifo,
-        hls::stream<float> & low_fifo, hls::stream<float> & alpha2_fifo,
-        data_t & point2, float alpha2, hls::stream<bool> & step_success) {
+static void checker(stream<data_t> & data, stream<float> & high_fifo,
+        stream<float> & low_fifo, stream<float> & alpha2_fifo,
+        data_t & point2, float alpha2, stream<bool> & step_success) {
 #pragma HLS INLINE
 
     uint32_t i;
@@ -169,44 +171,45 @@ static void checker(hls::stream<data_t> & data, hls::stream<float> & high_fifo,
     }
 }
 
-void take_step(hls::stream<data_t> & data_fifo, hls::stream<float> & alpha1_fifo,
-        hls::stream<bool> & y1_fifo, hls::stream<float> & err1_fifo, data_t & point2,
-        float alpha2, bool y2, float err2, float b, hls::stream<bool> & step_success) {
+void take_step(stream<data_t> & data_fifo, stream<float> & alpha1_fifo,
+        stream<bool> & y1_fifo, stream<float> & err1_fifo, data_t & point2,
+        float alpha2, bool y2, float err2, float b, stream<bool> & step_success) {
 #pragma HLS INLINE recursive
 #pragma HLS DATAFLOW
 
     // eta to alpha2 FIFOs
-    hls::stream<float> n_to_alpha2_k12_fifo;
-#pragma HLS STREAM variable=n_to_alpha2_k12_fifo depth=4096
-    hls::stream<float> n_to_alpha2_n_fifo;
-#pragma HLS STREAM variable=n_to_alpha2_n_fifo depth=4096
-    hls::stream<data_t> n_to_checker_data_fifo;
-#pragma HLS STREAM variable=n_to_checker_data_fifo depth=4096
+    stream<float> n_to_alpha2_k12_fifo;
+    #pragma HLS STREAM variable=n_to_alpha2_k12_fifo depth=4096
+    stream<float> n_to_alpha2_n_fifo;
+    #pragma HLS STREAM variable=n_to_alpha2_n_fifo depth=4096
+    stream<data_t> n_to_checker_data_fifo;
+    #pragma HLS STREAM variable=n_to_checker_data_fifo depth=4096
 
     // high-low to alpha2 FIFOs
-    hls::stream<float> hl_to_alpha2_s_fifo;
-#pragma HLS STREAM variable=hl_to_alpha2_s_fifo depth=4096
-    hls::stream<float> hl_to_alpha2_high_fifo;
-#pragma HLS STREAM variable=hl_to_alpha2_high_fifo depth=4096
-    hls::stream<float> hl_to_alpha2_low_fifo;
-#pragma HLS STREAM variable=hl_to_alpha2_low_fifo depth=4096
-    hls::stream<float> hl_to_alpha2_alpha1_fifo;
-#pragma HLS STREAM variable=hl_to_alpha2_alpha1_fifo depth=4096
-    hls::stream<bool> hl_to_alpha2_y1_fifo;
-#pragma HLS STREAM variable=hl_to_alpha2_y1_fifo depth=4096
+    stream<float> hl_to_alpha2_s_fifo;
+    #pragma HLS STREAM variable=hl_to_alpha2_s_fifo depth=4096
+    stream<float> hl_to_alpha2_high_fifo;
+    #pragma HLS STREAM variable=hl_to_alpha2_high_fifo depth=4096
+    stream<float> hl_to_alpha2_low_fifo;
+    #pragma HLS STREAM variable=hl_to_alpha2_low_fifo depth=4096
+    stream<float> hl_to_alpha2_alpha1_fifo;
+    #pragma HLS STREAM variable=hl_to_alpha2_alpha1_fifo depth=4096
+    stream<bool> hl_to_alpha2_y1_fifo;
+    #pragma HLS STREAM variable=hl_to_alpha2_y1_fifo depth=4096
 
     // alpha2 to checker FIFOs
-    hls::stream<float> alpha2_to_checker_alpha2_fifo;
-#pragma HLS STREAM variable=alpha2_to_checker_alpha2_fifo depth=4096
-    hls::stream<float> alpha2_to_checker_high_fifo;
-#pragma HLS STREAM variable=alpha2_to_checker_high_fifo depth=4096
-    hls::stream<float> alpha2_to_checker_low_fifo;
-#pragma HLS STREAM variable=alpha2_to_checker_low_fifo depth=4096
+    stream<float> alpha2_to_checker_alpha2_fifo;
+    #pragma HLS STREAM variable=alpha2_to_checker_alpha2_fifo depth=4096
+    stream<float> alpha2_to_checker_high_fifo;
+    #pragma HLS STREAM variable=alpha2_to_checker_high_fifo depth=4096
+    stream<float> alpha2_to_checker_low_fifo;
+    #pragma HLS STREAM variable=alpha2_to_checker_low_fifo depth=4096
 
-    // temp
+    // necessary to make HLS happy
     data_t point2_copy1 = point2;
     data_t point2_copy2 = point2;
 
+    // the actual pipeline
     n_engine(data_fifo, point2_copy1, n_to_alpha2_k12_fifo, n_to_alpha2_n_fifo,
             n_to_checker_data_fifo);
     high_low(alpha1_fifo, y1_fifo, y2, alpha2, hl_to_alpha2_s_fifo,

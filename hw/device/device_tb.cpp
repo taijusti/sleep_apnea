@@ -13,17 +13,14 @@
 #include <stdint.h>
 #include <math.h>
 
-#define TEST_ERROR (0.01)
-
 using namespace std;
+using namespace hls;
+
+#define TEST_ITERATIONS (100)
+#define TEST_ERROR (0.01)
 
 static float randFloat(void) {
     return (float)rand() / RAND_MAX;
-}
-
-static float randFixed(void) {
-	float temp = randFloat();
-	return temp;
 }
 
 static float sw_k(data_t * point1, data_t * point2) {
@@ -31,14 +28,13 @@ static float sw_k(data_t * point1, data_t * point2) {
      float difference;
      float result = 0;
      float temp;
-     for (i=0;i<DIMENSIONS;i++)
+     for (i = 0; i < DIMENSIONS; i++)
      {
          difference = point1->dim[i] - point2->dim[i];
          result = result + difference * difference;
 
      }
 
-    // result = result * float(-inverse_sigma_squared); // TODO: cleanup
      temp = -result;
      temp = expf(temp);
      return temp;
@@ -46,7 +42,8 @@ static float sw_k(data_t * point1, data_t * point2) {
 
 static float sw_e(float e_old, float k1, float k2, float y1_delta_alpha1_product,
 		float y2_delta_alpha2_product, float delta_b) {
-    return e_old + (k1 * y1_delta_alpha1_product) + (k2 * y2_delta_alpha2_product) + delta_b;
+    return e_old + (k1 * y1_delta_alpha1_product)
+            + (k2 * y2_delta_alpha2_product) + delta_b;
 }
 
 static bool sw_kkt(float alpha, bool y, float e) {
@@ -98,6 +95,7 @@ static bool sw_take_step(data_t & point1, data_t & point2, float err1, float err
     if (n > 0) {
         alpha2New = alpha2 + ((((y2 ? 1 : -1) * (err1 - err2)) / (n * 1.0)));
         alpha2NewClipped = alpha2New;
+
         if (alpha2New < low)
             alpha2NewClipped = low;
         else if (alpha2New > high)
@@ -173,261 +171,157 @@ static bool sw_take_step(data_t & point1, data_t & point2, float err1, float err
 }
 
 int main(void) {
-    data_t data[DIV_ELEMENTS];
+    stream<transmit_t> to_device;
+    stream<transmit_t> from_device;
+    data_t data [DIV_ELEMENTS];
     data_t point1;
     data_t point2;
-    bool y[DIV_ELEMENTS];
-    float y1_delta_alpha1_product;
-    float y2_delta_alpha2_product;
-    float delta_b;
-    float e_bram[DIV_ELEMENTS];
-    float expected_e_bram[DIV_ELEMENTS];
-    float max_delta_e;
-    float expected_max_delta_e;
-    uint32_t max_delta_e_idx;
-    uint32_t expected_max_delta_e_idx;
-    float alpha[DIV_ELEMENTS];
-    float k1[DIV_ELEMENTS];
-    float k2[DIV_ELEMENTS];
-    uint32_t kkt_bram[DIV_ELEMENTS];
-    uint32_t expected_kkt_bram[DIV_ELEMENTS];
-    uint32_t kkt_violators;
-    uint32_t expected_kkt_violators;
-    uint32_t i, j;
-    hls::stream<transmit_t> in;
-    hls::stream<transmit_t> out;
-    data_t ddr [DIV_ELEMENTS];
-    uint32_t alpha2;
-    float err2;
-    bool y2;
+    bool y [DIV_ELEMENTS];
+    float e_bram [DIV_ELEMENTS];
+    float alpha [DIV_ELEMENTS];
     float b;
-    bool step_success;
+    uint32_t test_iteration;
+    uint32_t i;
+    uint32_t j;
 
-    ////////////////////////////////////////////////////////////
-    /////////GENERATE INPUT VECTOR / EXPECTED OUTPUT////////////
-    ////////////////////////////////////////////////////////////
-
-    // initialize everything
-    y1_delta_alpha1_product = randFixed();
-    y2_delta_alpha2_product = randFixed();
-    delta_b = randFixed();
-    for (i = 0; i < DIV_ELEMENTS; i++) {
-        y[i] = randFixed() > 0.5;
-        e_bram[i] = y[i] ? -1 : 1;
-        alpha[i] = randFixed();
-        for (j = 0; j < DIMENSIONS; j++) {
-            data[i].dim[j] = randFixed();
+    for (test_iteration = 0; test_iteration < TEST_ITERATIONS; test_iteration++) {
+        // generate initial state for device
+        for (i = 0; i < DIV_ELEMENTS; i++) {
+            for (j = 0; j < DIMENSIONS; j++) {
+                data[i].dim[j] = randFloat() * 16384;
+            }
+            y[i] = randFloat() > 0.5;
+            e_bram[i] = y[i] ? -1 : 1;
         }
-    }
-
-    for (i = 0; i < DIMENSIONS; i++) {
-        point1.dim[i] = randFixed();
-        point2.dim[i] = randFixed();
-    }
-
-    alpha2 = randFixed();
-    err2 = randFixed();
-    y2 = randFixed() > 0.5;
-    b = randFixed();
-
-    // calculate the expected E bram values
-    for (i = 0; i < DIV_ELEMENTS; i++) {
-        k1[i] = sw_k(&point1, data + i);
-        k2[i] = sw_k(&point2, data + i);
-    }
-
-    for (i = 0; i < DIV_ELEMENTS; i++) {
-        expected_e_bram[i] = sw_e(e_bram[i], k1[i], k2[i],
-                                  y1_delta_alpha1_product,
-                                  y2_delta_alpha2_product,
-                                  delta_b);
-    }
-
-    // calculate the correct KKT violators
-    j = 0;
-    for (i = 0; i < DIV_ELEMENTS; i++) {
-        if (!sw_kkt(alpha[i], y[i], expected_e_bram[i])) {
-            expected_kkt_bram[j] = i;
-            j++;
-        }
-    }
-    expected_kkt_violators = j;
-
-    // calculate the correct max delta E value
-    expected_max_delta_e = 0;
-    max_delta_e_idx = 0;
-    for (i = 0; i < DIV_ELEMENTS; i++) {
-        step_success = sw_take_step(data[i], point2, expected_e_bram[i], err2,
-                y[i], y2, alpha[i], alpha2, b);
-
-        if (!step_success) {
-            continue;
+        for (i = 0; i < DIMENSIONS; i++) {
+            point1.dim[i] = randFloat();
+            point2.dim[i] = randFloat();
         }
 
-    	float delta_e = expected_e_bram[i] - err2;
-    	if (delta_e < 0) {
-    		delta_e *= -1;
-    	}
-
-        if (delta_e > expected_max_delta_e) {
-            expected_max_delta_e = delta_e;
-            max_delta_e_idx = i;
+        // initialize the device
+        unicast_send(COMMAND_INIT_DATA, to_device);
+        unicast_send(DIV_ELEMENTS, to_device);
+        for (i = 0; i < DIV_ELEMENTS; i++) {
+            unicast_send(data[i], to_device);
+            unicast_send(y[i], to_device);
         }
-    }
+        device(to_device, from_device);
+        unicast_send(COMMAND_SET_POINT_1, to_device);
+        unicast_send(point1, to_device);
+        device(to_device, from_device);
+        unicast_send(COMMAND_SET_POINT_2, to_device);
+        unicast_send(point2, to_device);
+        device(to_device, from_device);
 
-    ////////////////////////////////////////////////////////////
-    //////////////CONFIGURE THE DEVICE//////////////////////////
-    ////////////////////////////////////////////////////////////
+        // readback all points to make sure they were properly set
+        for (i = 0; i < DIV_ELEMENTS; i++) {
+            data_t received_point;
+            bool received_y;
+            float received_e;
+            float received_alpha;
 
-    // run the module, starting with initializing the device
-    unicast_send(COMMAND_INIT_DATA, in);
-    for (i = 0; i < DIV_ELEMENTS; i++) {
-        unicast_send(data[i], in);
-        unicast_send(y[i], in);
-    }
-    device(in, out, ddr);
+            unicast_send(COMMAND_GET_POINT, to_device);
+            unicast_send(i, to_device);
+            device(to_device, from_device);
+            unicast_recv(received_point, from_device);
+            unicast_recv(received_y, from_device);
+            unicast_recv(received_e, from_device);
+            unicast_recv(received_alpha, from_device);
 
-    // set the points
-    unicast_send(COMMAND_SET_POINT_1, in);
-    for (i = 0; i < DIMENSIONS; i++) {
-        unicast_send(point1.dim[i], in);
-    }
-    device(in, out, ddr);
+            for (j = 0; j < DIMENSIONS; j++) {
+                if (ABS(received_point.dim[j] - data[i].dim[j]) > TEST_ERROR) {
+                    printf("TEST FAILED! data mismatch\n");
+                    return 1;
+                }
 
-    unicast_send(COMMAND_SET_POINT_2, in);
-    for (i = 0; i < DIMENSIONS; i++) {
-        unicast_send(point2.dim[i], in);
-    }
-    device(in, out, ddr);
+                if (received_y != y[i]) {
+                    printf("TEST FAILED! y mismatch\n");
+                    return 1;
+                }
 
-    //set the alphas
-    for (i = 0; i < DIV_ELEMENTS; i++) {
-        unicast_send(COMMAND_SET_ALPHA, in);
-        unicast_send(i, in);
-        unicast_send(alpha[i], in);
-        device(in, out, ddr);
-    }
+                if (received_e != e_bram[i]) {
+                    printf("TEST FAILED! e != -y\n");
+                    return 1;
+                }
 
-    // set the delta alpha products
-    unicast_send(COMMAND_SET_Y1_ALPHA1_PRODUCT, in);
-    unicast_send(y1_delta_alpha1_product, in);
-    device(in, out, ddr);
-    unicast_send(COMMAND_SET_Y2_ALPHA2_PRODUCT, in);
-    unicast_send(y2_delta_alpha2_product, in);
-    device(in, out, ddr);
-
-    // set delta B
-    unicast_send(COMMAND_SET_DELTA_B, in);
-    unicast_send(delta_b, in);
-    device(in, out, ddr);
-
-    ////////////////////////////////////////////////////////////
-    ////////////////// READ BACK EVERYTHING ////////////////////
-    ////////////////////////////////////////////////////////////
-
-    for (i = 0; i < DIV_ELEMENTS; i++) {
-        data_t recv_data;
-        bool recv_y;
-        float recv_err;
-        float recv_alpha;
-
-        unicast_send(COMMAND_GET_POINT, in);
-        unicast_send(i, in);
-        device(in, out, ddr);
-        unicast_recv(recv_data, out);
-        unicast_recv(recv_y, out);
-        unicast_recv(recv_err, out);
-        unicast_recv(recv_alpha, out);
-
-        for (j = 0; j < DIMENSIONS; j++) {
-            if (ABS(recv_data.dim[j] - data[i].dim[j]) > ERROR) {
-                printf("TEST FAILED! KKT violator entry mismatch!\n");
-                return 1;
+                if (received_alpha != 0) {
+                    printf("TEST FAILED! alpha != 0\n");
+                    return 1;
+                }
             }
         }
-        if (recv_y != y[i]) {
-            printf("TEST FAILED! y read back mismatch!\n");
+
+        // run the KKT pipeline
+        uint32_t smo_iteration = randFloat() * ELEMENTS;
+        uint32_t offset = DIV_ELEMENTS;
+        float y1_delta_alpha1_product = randFloat();
+        float y2_delta_alpha2_product = randFloat();
+        float delta_b = randFloat();
+        int32_t violator_idx;
+        unicast_send(COMMAND_GET_KKT, to_device);
+        unicast_send(false, to_device); // err_bram_write_en
+        unicast_send(smo_iteration, to_device);
+        device(to_device, from_device);
+        unicast_recv(violator_idx, from_device);
+
+        // compute the correct answer (earliest KKT violator)
+        int32_t expected_violator_idx = -1;
+        for (i = 0; i < DIV_ELEMENTS; i++) {
+            if ((i + offset) > smo_iteration
+                    && !sw_kkt(alpha[i], y[i], e_bram[i])) {
+                expected_violator_idx = i + offset;
+                break;
+            }
+        }
+        if (expected_violator_idx != violator_idx) {
+            printf("TEST FAILED! violator index mismatch\n");
             return 1;
         }
-        if (ABS(recv_err - e_bram[i]) > ERROR) {
-            printf("TEST FAILED! err read back mismatch!\n");
+
+        // run the delta E pipeline
+        float alpha2 = randFloat();
+        bool y2 = randFloat() > 0.5;
+        float err2 = randFloat();
+        float b = randFloat();
+        float max_delta_e;
+        uint32_t max_delta_e_idx;
+        unicast_send(COMMAND_SET_ALPHA2, to_device);
+        unicast_send(alpha2, to_device);
+        device(to_device, from_device);
+        unicast_send(COMMAND_SET_Y2, to_device);
+        unicast_send(y2, to_device);
+        device(to_device, from_device);
+        unicast_send(COMMAND_SET_ERR2, to_device);
+        unicast_send(err2, to_device);
+        device(to_device, from_device);
+        unicast_send(COMMAND_SET_B, to_device);
+        unicast_send(b, to_device);
+        device(to_device, from_device);
+        unicast_send(COMMAND_GET_DELTA_E, to_device);
+        device(to_device, from_device);
+        unicast_recv(max_delta_e, from_device);
+        unicast_recv(max_delta_e_idx, from_device);
+
+        // compute the correct answer
+        uint32_t expected_max_delta_e_idx = -1;
+        float expected_max_delta_e = -1;
+        for (i = 0; i < DIV_ELEMENTS; i++) {
+            float delta_e = ABS(e_bram[i] - err2);
+
+            if (sw_take_step(point1, point2, e_bram[i], err2, y[i], y2, alpha[i], alpha2, b)
+                    && delta_e > expected_max_delta_e) {
+                expected_max_delta_e_idx = i;
+                expected_max_delta_e = delta_e;
+            }
+        }
+        if (expected_max_delta_e_idx != max_delta_e_idx) {
+            printf("TEST FAILED! max delta E index mismatch\n");
             return 1;
         }
-        if (ABS(recv_alpha - alpha[i]) > ERROR) {
-            printf("TEST FAILED! alpha read back mismatch!\n");
+        if (ABS(expected_max_delta_e - max_delta_e) > TEST_ERROR) {
+            printf("TEST FAILED! max delta E mismatch\n");
             return 1;
         }
-    }
-
-    ////////////////////////////////////////////////////////////
-    ////////////////////COMPUTE EVERYTHING//////////////////////
-    ////////////////////////////////////////////////////////////
-
-    // compute and get KKT violators
-    unicast_send(COMMAND_GET_KKT, in);
-    device(in, out, ddr);
-    unicast_recv(kkt_violators, out);
-    for (i = 0; i < kkt_violators; i++) {
-        unicast_recv(kkt_bram[i], out);
-    }
-
-    // compute delta E
-    unicast_send(COMMAND_GET_DELTA_E, in);
-    unicast_send(alpha2, in);
-    unicast_send(y2, in);
-    unicast_send(err2, in);
-    unicast_send(b, in);
-    device(in, out, ddr);
-    unicast_recv(max_delta_e, out);
-    unicast_recv(max_delta_e_idx, out);
-
-    ////////////////////////////////////////////////////////////
-    //////////////////GET ALL RESULTS///////////////////////////
-    ////////////////////////////////////////////////////////////
-
-    // ask for all E values
-    for (i = 0; i < DIV_ELEMENTS; i++) {
-        unicast_send(COMMAND_GET_E, in);
-        unicast_send(i, in);
-        device(in, out, ddr);
-        unicast_recv(e_bram[i], out);
-    }
-
-    ////////////////////////////////////////////////////////////
-    //////////////////CHECKING PHASE////////////////////////////
-    ////////////////////////////////////////////////////////////
-
-    // check if the # of kkt violators match our expected # of kkt violators
-    if (expected_kkt_violators != kkt_violators) {
-        printf("TEST FAILED! # of KKT violators mismatch! expected: %d\tactual: %d\n",
-               expected_kkt_violators, kkt_violators);
-        return 1;
-    }
-
-    // check if the kkt violating entries match our expected kkt violators
-    for (i = 0; i < kkt_violators; i++) {
-        if (kkt_bram[i] != expected_kkt_bram[i]) {
-            printf("TEST FAILED! KKT violator entry mismatch!\n");
-            return 1;
-        }
-    }
-
-    // check if all the Es match up
-    for (i = 0; i < DIV_ELEMENTS; i++) {
-        float lower = expected_e_bram[i] - float(TEST_ERROR);
-        float upper = expected_e_bram[i] + float(TEST_ERROR);
-        float temp = e_bram[i];
-        if (!(e_bram[i] >= lower) || !(e_bram[i] <= upper)) {
-            printf("TEST FAILED! E mismatch!\n");
-            return 1;
-        }
-    }
-
-    // check that the max delta e value matches with our expected max delta e
-    if (max_delta_e < (expected_max_delta_e - float(TEST_ERROR)) ||
-        max_delta_e > (expected_max_delta_e + float(TEST_ERROR))) {
-        printf("TEST FAILED! MAX_DELTA_E mismatch!\n");
-        return 1;
     }
 
     printf("TEST PASSED!\n");

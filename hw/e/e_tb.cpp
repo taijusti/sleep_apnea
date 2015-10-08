@@ -4,6 +4,11 @@
 #include "../common/common.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <hls_stream.h>
+
+using namespace hls;
+
+#define TEST_ITERATIONS (10000)
 
 static float randFloat(void) {
     return (float)rand() / RAND_MAX;
@@ -15,60 +20,58 @@ static float sw_e(float e_old, float k1, float k2, float y1_delta_alpha1_product
 }
 
 int main(void) {
-    float e_in;
-    float e_out;
-    float k1;
-    float k2;
+    float e_bram [PARTITION_ELEMENTS];
+    float e_bram_expected [PARTITION_ELEMENTS];
+    stream<float> e_fifo;
+    stream<float> k0_fifo;
+    stream<float> k1_fifo;
+    float k0_values [PARTITION_ELEMENTS];
+    float k1_values [PARTITION_ELEMENTS];
     float y1_delta_alpha1_product;
     float y2_delta_alpha2_product;
     float delta_b;
-    float expected[PARTITION_ELEMENTS];
-    float actual;
-    unsigned int i;
-    unsigned int j;
-    hls::stream<float> e_bram_in;
-    hls::stream<float> e_bram_out;
-    hls::stream<float> e_fifo;
-    hls::stream<float> k1_fifo;
-    hls::stream<float> k2_fifo;
+    bool err_bram_write_en;
+    uint32_t test_iteration;
+    uint32_t i;
 
-    // initialize everything
-    delta_b = randFloat();
-    for (i = 0; i < 1000000; i++) {
+    for (test_iteration = 0; test_iteration < TEST_ITERATIONS; test_iteration++){
+        // generate all inputs
+        for (i = 0; i < PARTITION_ELEMENTS; i++) {
+            e_bram[i] = randFloat();
+            k0_values[i] = randFloat();
+            k1_values[i] = randFloat();
+            k0_fifo.write(k0_values[i]);
+            k1_fifo.write(k1_values[i]);
+        }
         y1_delta_alpha1_product = randFloat();
         y2_delta_alpha2_product = randFloat();
         delta_b = randFloat();
+        err_bram_write_en = randFloat() > 0.5;
 
-        for (j = 0; j < PARTITION_ELEMENTS; j++) {
-            // randomly generate parameters
-            e_in = randFloat();
-            k1 = randFloat();
-            k2 = randFloat();
-
-            // get the expected result
-            expected[j] = sw_e(e_in, k1, k2, y1_delta_alpha1_product,
-                    y2_delta_alpha2_product, delta_b);
-
-            // run the module
-            e_bram_in.write(e_in);
-            k1_fifo.write(k1);
-            k2_fifo.write(k2);
+        // generate expected values
+        for ( i = 0; i < PARTITION_ELEMENTS; i++) {
+            e_bram_expected[i] = sw_e(e_bram[i], k0_values[i], k1_values[i],
+                y1_delta_alpha1_product, y2_delta_alpha2_product, delta_b);
         }
 
-        e(e_bram_in, e_bram_out, e_fifo, k1_fifo ,k2_fifo,
-                y1_delta_alpha1_product, y2_delta_alpha2_product, delta_b);
+        // generate actual values
+        e(e_bram, e_fifo, k0_fifo, k1_fifo, y1_delta_alpha1_product,
+                y2_delta_alpha2_product, delta_b, err_bram_write_en);
 
-        // check all results
-        for (j = 0; j < PARTITION_ELEMENTS; j++) {
-            actual = e_bram_out.read();
-            if (actual != expected[j]) {
-                printf("TEST FAILED! e_bram_out mismatch!\n");
+        // check values
+        for (i = 0; i < PARTITION_ELEMENTS; i++) {
+            if (e_bram_expected[i] != e_fifo.read()) {
+                printf("TEST FAILED! E mismatch!\n");
                 return 1;
             }
 
-            actual = e_fifo.read();
-            if (actual != expected[j]) {
-                printf("TEST FAILED! e_fifo mismatch!\n");
+            if (err_bram_write_en && (e_bram_expected[i] != e_bram[i])) {
+                printf("TEST FAILED! E BRAM write enable was asserted, but E BRAM != E EXPECTED\n");
+                return 1;
+            }
+
+            if ((!err_bram_write_en) && (e_bram_expected[i] == e_bram[i])) {
+                printf("TEST FAILED! E BRAM write enable was NOT asserted, but E BRAM == E EXPECTED\n");
                 return 1;
             }
         }

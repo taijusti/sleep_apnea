@@ -9,6 +9,8 @@
 #include <hls_stream.h>
 #include <stdint.h>
 
+using namespace hls;
+
 static bool isKKT(float alpha, bool y, float e) {
     #pragma HLS INLINE
 
@@ -26,18 +28,28 @@ static bool isKKT(float alpha, bool y, float e) {
     }
 }
 
-void kkt(hls::stream<float> & alpha_fifo, hls::stream<bool> & y_fifo,
-		hls::stream<float> & e_fifo, uint32_t kkt_bram[DIV_ELEMENTS], uint32_t & violators) {
-    uint32_t i, j = 0;
-    uint32_t violator_ctr = 0;
+void kkt(stream<float> & alpha_fifo, stream<bool> & y_fifo,
+		stream<float> & e_fifo, uint32_t smo_iteration, uint32_t offset,
+		int32_t & violator_idx) {
+    uint32_t i;
+    bool enable;
+    bool written = false;
+    uint32_t element_idx;
+    int32_t local_violator_idx = -1;
 
     // find and record KKT violators
     for (i = 0; i < PARTITION_ELEMENTS; i++) {
     #pragma HLS PIPELINE II=1
-    	if (!isKKT(alpha_fifo.read(), y_fifo.read(), e_fifo.read())) {
-    		kkt_bram[violator_ctr] = i;
-            violator_ctr++;
+        element_idx = offset + i;
+        enable = !isKKT(alpha_fifo.read(), y_fifo.read(), e_fifo.read())
+                && element_idx > smo_iteration
+                && !written;
+
+    	if (enable) {
+    	    written = true;
+    	    local_violator_idx = element_idx;
         }
     }
-    violators = violator_ctr;
+
+    violator_idx = local_violator_idx;
 }

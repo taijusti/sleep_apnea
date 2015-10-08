@@ -9,10 +9,10 @@
 #include <stdint.h>
 #include <hls_stream.h>
 
-void e( float e_bram[DIV_ELEMENTS],
+void e(float e_bram[PARTITION_ELEMENTS],
        hls::stream<float> & e_fifo, hls::stream<float> & k0,
        hls::stream<float> & k1, float y1_delta_alpha1_product,
-       float y2_delta_alpha2_product, float delta_b) {
+       float y2_delta_alpha2_product, float delta_b, bool err_bram_write_en) {
     unsigned short i;
 
     for (i = 0; i < PARTITION_ELEMENTS; i++) {
@@ -22,6 +22,9 @@ void e( float e_bram[DIV_ELEMENTS],
     	        + (y2_delta_alpha2_product * k1.read())
                 + delta_b;
         e_fifo.write(temp);
-        e_bram[i]=temp;
+
+        if (err_bram_write_en) {
+            e_bram[i] = temp;
+        }
     }
 }

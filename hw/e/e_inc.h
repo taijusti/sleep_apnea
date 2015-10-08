@@ -8,8 +8,9 @@
     #include "../common/common.h"
     #include <stdint.h>
 
-    void e(float e_bram[DIV_ELEMENTS],
+    void e(float e_bram[PARTITION_ELEMENTS],
            hls::stream<float> & e_fifo, hls::stream<float> & k1,
            hls::stream<float> & k2, float y1_delta_alpha1_product,
-           float y2_delta_alpha2_product, float delta_b);
+           float y2_delta_alpha2_product, float delta_b,
+           bool err_bram_write_en);
 #endif

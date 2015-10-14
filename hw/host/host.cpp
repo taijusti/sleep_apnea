@@ -177,10 +177,10 @@ static void callDevice(stream<transmit_t> in [NUM_DEVICES], stream<transmit_t> o
     static data_t ddr[NUM_DEVICES][DIV_ELEMENTS];
 
     if (device_addr == 0) {
-        device(out[device_addr], in[device_addr]);
+        device(out[device_addr], in[device_addr], ddr[device_addr]);
     }
     else {
-        device2(out[device_addr], in[device_addr]);
+        device2(out[device_addr], in[device_addr], ddr[device_addr]);
     }
 #endif
 }

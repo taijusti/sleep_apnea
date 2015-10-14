@@ -16,8 +16,8 @@
 
     using namespace hls;
 
-    void device(stream<transmit_t> &in, stream<transmit_t> &out);
+    void device(stream<transmit_t> &in, stream<transmit_t> &out, volatile data_t * start);
     #ifndef __SYNTHESIS__
-        void device2(stream<transmit_t> &in, stream<transmit_t> &out);
+        void device2(stream<transmit_t> &in, stream<transmit_t> &out, volatile data_t * start);
     #endif
 #endif

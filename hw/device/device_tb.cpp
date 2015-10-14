@@ -16,7 +16,7 @@
 using namespace std;
 using namespace hls;
 
-#define TEST_ITERATIONS (100)
+#define TEST_ITERATIONS (10000)
 #define TEST_ERROR (0.01)
 
 static float randFloat(void) {
@@ -174,6 +174,7 @@ int main(void) {
     stream<transmit_t> to_device;
     stream<transmit_t> from_device;
     data_t data [DIV_ELEMENTS];
+    data_t ddr [DIV_ELEMENTS];
     data_t point1;
     data_t point2;
     bool y [DIV_ELEMENTS];
@@ -205,13 +206,13 @@ int main(void) {
             unicast_send(data[i], to_device);
             unicast_send(y[i], to_device);
         }
-        device(to_device, from_device);
+        device(to_device, from_device, ddr);
         unicast_send(COMMAND_SET_POINT_1, to_device);
         unicast_send(point1, to_device);
-        device(to_device, from_device);
+        device(to_device, from_device, ddr);
         unicast_send(COMMAND_SET_POINT_2, to_device);
         unicast_send(point2, to_device);
-        device(to_device, from_device);
+        device(to_device, from_device, ddr);
 
         // readback all points to make sure they were properly set
         for (i = 0; i < DIV_ELEMENTS; i++) {
@@ -222,7 +223,7 @@ int main(void) {
 
             unicast_send(COMMAND_GET_POINT, to_device);
             unicast_send(i, to_device);
-            device(to_device, from_device);
+            device(to_device, from_device, ddr);
             unicast_recv(received_point, from_device);
             unicast_recv(received_y, from_device);
             unicast_recv(received_e, from_device);
@@ -261,13 +262,13 @@ int main(void) {
         unicast_send(COMMAND_GET_KKT, to_device);
         unicast_send(false, to_device); // err_bram_write_en
         unicast_send(smo_iteration, to_device);
-        device(to_device, from_device);
+        device(to_device, from_device, ddr);
         unicast_recv(violator_idx, from_device);
 
         // compute the correct answer (earliest KKT violator)
         int32_t expected_violator_idx = -1;
         for (i = 0; i < DIV_ELEMENTS; i++) {
-            if ((i + offset) > smo_iteration
+            if ((i + offset) >= smo_iteration
                     && !sw_kkt(alpha[i], y[i], e_bram[i])) {
                 expected_violator_idx = i + offset;
                 break;
@@ -287,18 +288,18 @@ int main(void) {
         uint32_t max_delta_e_idx;
         unicast_send(COMMAND_SET_ALPHA2, to_device);
         unicast_send(alpha2, to_device);
-        device(to_device, from_device);
+        device(to_device, from_device, ddr);
         unicast_send(COMMAND_SET_Y2, to_device);
         unicast_send(y2, to_device);
-        device(to_device, from_device);
+        device(to_device, from_device, ddr);
         unicast_send(COMMAND_SET_ERR2, to_device);
         unicast_send(err2, to_device);
-        device(to_device, from_device);
+        device(to_device, from_device, ddr);
         unicast_send(COMMAND_SET_B, to_device);
         unicast_send(b, to_device);
-        device(to_device, from_device);
+        device(to_device, from_device, ddr);
         unicast_send(COMMAND_GET_DELTA_E, to_device);
-        device(to_device, from_device);
+        device(to_device, from_device, ddr);
         unicast_recv(max_delta_e, from_device);
         unicast_recv(max_delta_e_idx, from_device);
 
